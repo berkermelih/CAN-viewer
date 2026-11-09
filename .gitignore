@@ -1,0 +1,9 @@
+# Derleme çıktıları
+build/
+deploy/
+
+# Qt Creator kullanıcıya özel dosyalar
+.qtcreator/
+*.user
+*.user.*
+CMakeLists.txt.user*
