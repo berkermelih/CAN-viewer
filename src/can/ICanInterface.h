@@ -7,11 +7,20 @@
 #include <QString>
 #include <QVector>
 
+/// Bir CAN kanalını açmak için gereken ayarlar.
+struct CanBusSettings
+{
+    QString channel;          ///< Kanal tanımlayıcısı (PCAN için kanal handle değeri, ör. "81")
+    int bitrate = 500000;     ///< Nominal (arbitration) bit hızı, bit/s
+    bool fd = false;          ///< true ise kanal CAN FD modunda açılır
+    int dataBitrate = 2000000; ///< CAN FD veri fazı bit hızı, bit/s (yalnızca fd = true iken)
+};
+
 /**
  * @brief CAN donanım arayüzleri için soyut temel sınıf.
  *
- * Uygulamanın geri kalanı yalnızca bu arayüzü bilir; PCAN, sanal (loopback)
- * veya ileride eklenecek başka arayüzler bu sınıftan türetilir.
+ * Uygulamanın geri kalanı yalnızca bu arayüzü bilir; PCAN, sanal (loopback,
+ * yalnızca test için) veya ileride eklenecek başka arayüzler bu sınıftan türetilir.
  * Alınan çerçeveler FramesReceived sinyali ile toplu olarak bildirilir.
  */
 class ICanInterface : public QObject
@@ -32,13 +41,15 @@ public:
     ~ICanInterface() override = default;
 
     /**
-     * @brief CAN kanalını verilen bit hızıyla açar.
-     * @param channel Kanal tanımlayıcısı (ör. "PCAN_USBBUS1").
-     * @param bitrate Bit hızı (bit/s), ör. 500000.
+     * @brief CAN kanalını verilen ayarlarla açar.
+     * @param settings Kanal, bit hızı ve CAN FD ayarları.
      * @param errorText Hata durumunda okunabilir açıklama yazılır.
      * @return Kanal açıldıysa true.
      */
-    virtual bool Open(const QString &channel, int bitrate, QString &errorText) = 0;
+    virtual bool Open(const CanBusSettings &settings, QString &errorText) = 0;
+
+    /// Kanal CAN FD modunda açıldıysa true döndürür.
+    virtual bool IsFdMode() const = 0;
 
     /// Kanal açıksa kapatır ve alım işlemlerini durdurur.
     virtual void Close() = 0;

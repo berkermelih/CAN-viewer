@@ -45,6 +45,7 @@ void ObjectDictionary::Clear()
     m_deviceInfo.clear();
     m_fileInfoEntries.clear();
     m_deviceInfoEntries.clear();
+    m_commissioningEntries.clear();
     m_filePath.clear();
 }
 
@@ -121,6 +122,37 @@ void ObjectDictionary::SetDeviceInfoEntries(const InfoEntries &entries)
 const ObjectDictionary::InfoEntries &ObjectDictionary::DeviceInfoEntries() const
 {
     return m_deviceInfoEntries;
+}
+void ObjectDictionary::SetCommissioningEntries(const InfoEntries &entries)
+{
+    m_commissioningEntries = entries;
+}
+
+const ObjectDictionary::InfoEntries &ObjectDictionary::CommissioningEntries() const
+{
+    return m_commissioningEntries;
+}
+
+QString ObjectDictionary::CommissioningValue(const QString &key) const
+{
+    for (const auto &pair : m_commissioningEntries) {
+        if (pair.first.compare(key, Qt::CaseInsensitive) == 0) {
+            return pair.second;
+        }
+    }
+    return QString();
+}
+
+bool ObjectDictionary::HasParameterValues() const
+{
+    for (const OdObject &object : m_objects) {
+        for (const OdEntry &entry : object.entries) {
+            if (!entry.parameterValue.isEmpty()) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void ObjectDictionary::SetFilePath(const QString &filePath)

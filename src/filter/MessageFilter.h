@@ -11,7 +11,8 @@ enum class FilterMode
 {
     SingleId, ///< Tek bir ID ile birebir eşleşme
     IdRange,  ///< first..second (dahil) aralığı
-    Mask      ///< (id & second) == (first & second)
+    Mask,     ///< (id & second) == (first & second)
+    Bit       ///< ID == first ve veri bitinin (bitPosition) değeri bitValue
 };
 
 /// Tek bir filtre kuralı.
@@ -22,10 +23,12 @@ struct FilterRule
     FilterMode mode = FilterMode::SingleId;
     quint32 first = 0;                    ///< ID, aralık başı veya maske karşılaştırma değeri
     quint32 second = 0;                   ///< Aralık sonu veya maske
+    int bitPosition = 0;                  ///< Bit modu: bayt * 8 + bit (bit 0 = baytın en düşük biti)
+    bool bitValue = true;                 ///< Bit modu: beklenen bit değeri
 };
 
 /**
- * @brief CAN ID'ye göre dahil et / hariç tut filtre kümesi.
+ * @brief CAN ID'ye (ve isteğe bağlı olarak tek bir veri bitine) göre dahil et / hariç tut filtre kümesi.
  *
  * Kurallar şöyle değerlendirilir: eşleşen herhangi bir "hariç tut" kuralı
  * çerçeveyi reddeder; en az bir etkin "dahil et" kuralı varsa çerçeve
@@ -70,11 +73,14 @@ public:
     bool Accepts(const CanFrame &frame) const;
 
     /**
-     * @brief Tek bir kuralın verilen ID ile eşleşip eşleşmediğini döndürür.
+     * @brief Tek bir kuralın verilen çerçeveyle eşleşip eşleşmediğini döndürür.
+     *
+     * Bit modunda çerçeve, verilen ID'ye sahip olmalı ve ilgili bayt veride
+     * bulunmalıdır; RTR çerçeveleri ve biti taşımayan kısa çerçeveler eşleşmez.
      * @param rule Kural.
-     * @param id CAN ID.
+     * @param frame Değerlendirilecek çerçeve.
      */
-    static bool RuleMatches(const FilterRule &rule, quint32 id);
+    static bool RuleMatches(const FilterRule &rule, const CanFrame &frame);
 
     /**
      * @brief Kuralı kullanıcıya gösterilecek kısa metne çevirir.

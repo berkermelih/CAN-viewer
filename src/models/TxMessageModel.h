@@ -11,8 +11,8 @@
 struct TxMessage
 {
     CanFrame frame;
-    int periodMs = 0;            ///< 0: yalnızca elle gönderim, >0: periyodik
-    bool periodicEnabled = true; ///< Periyodik gönderim etkin mi
+    int periodMs = 0;            ///< 0: yalnızca elle gönderim, >0: periyodik (cycle time)
+    bool periodicEnabled = true; ///< Periyodik gönderim etkin mi (false: "Paused")
     quint64 count = 0;           ///< Gönderilme sayısı
     QString comment;
     qint64 nextDueMs = 0;        ///< Bir sonraki periyodik gönderim zamanı (iç kullanım)
@@ -73,6 +73,33 @@ public:
     int AddMessage(const TxMessage &message);
 
     /**
+     * @brief Birden çok mesajı verilen satırdan itibaren ekler (yapıştırma için).
+     * @param row Ekleme konumu; geçersizse sona eklenir.
+     * @param messages Eklenecek mesajlar.
+     * @return İlk eklenen satır; liste boşsa -1.
+     */
+    int InsertMessages(int row, const QVector<TxMessage> &messages);
+
+    /**
+     * @brief Tüm listeyi verilen mesajlarla değiştirir (dosyadan açma).
+     * @param messages Yeni liste.
+     */
+    void SetMessages(const QVector<TxMessage> &messages);
+
+    /// Tüm mesajları siler.
+    void Clear();
+
+    /// Listedeki tüm mesajları döndürür (dosyaya kaydetme için).
+    const QVector<TxMessage> &Messages() const;
+
+    /**
+     * @brief ID ve veri sütunlarının gösterim biçimini ayarlar.
+     * @param idFormat Hex veya onluk ID.
+     * @param dataFormat Hex, onluk veya ASCII veri.
+     */
+    void SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat);
+
+    /**
      * @brief Var olan mesajı günceller (sayaç korunur).
      * @param row Satır numarası.
      * @param message Yeni içerik.
@@ -103,8 +130,14 @@ public:
     /// Tüm gönderim sayaçlarını sıfırlar.
     void ResetCounters();
 
+signals:
+    /// Liste içeriği (mesaj ekleme, silme, düzenleme, duraklatma) değiştiğinde yayılır; sayaç değişimleri hariç.
+    void ContentChanged();
+
 private:
     QVector<TxMessage> m_messages;
+    IdFormat m_idFormat = IdFormat::Hex;
+    DataFormat m_dataFormat = DataFormat::Hex;
 };
 
 #endif // TXMESSAGEMODEL_H

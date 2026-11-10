@@ -102,6 +102,13 @@ public:
     void SetDirectionColors(const QColor &rxColor, const QColor &txColor);
 
     /**
+     * @brief ID ve veri sütunlarının gösterim biçimini ayarlar (CSV her zaman hex yazılır).
+     * @param idFormat Hex veya onluk ID.
+     * @param dataFormat Hex, onluk veya ASCII veri.
+     */
+    void SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat);
+
+    /**
      * @brief Satırdaki çerçeveye işaretçi döndürür.
      * @return Satır geçersizse nullptr.
      */
@@ -131,10 +138,12 @@ private:
 
     std::deque<Entry> m_entries;
     QVector<Entry> m_pending;
-    QHash<quint32, qint64> m_lastTimeByKey;
+    QHash<quint64, qint64> m_lastTimeByKey;
     InterpreterFunction m_interpreter;
     QColor m_rxColor;
     QColor m_txColor;
+    IdFormat m_idFormat = IdFormat::Hex;
+    DataFormat m_dataFormat = DataFormat::Hex;
     QTimer m_flushTimer;
     quint64 m_nextNumber = 1;
     int m_maximumRows = 100000;

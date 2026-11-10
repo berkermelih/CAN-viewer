@@ -4,17 +4,11 @@
 
 namespace {
 
-// Çerçeve ID'si ve tipinden anahtar üretir (Δt hesabı için).
-quint32 MakeKey(const CanFrame &frame)
+// Çerçeve ID'si ve tipinden anahtar üretir (Δt hesabı için; yön bilgisi ayrıca 64 bitte taşınır).
+quint64 MakeKey(const CanFrame &frame)
 {
-    return frame.id | (frame.extended ? 0x80000000u : 0u) | (frame.rtr ? 0x40000000u : 0u);
-}
-
-// Çerçeve tipini "Std", "Ext", "Std RTR" biçiminde döndürür.
-QString TypeText(const CanFrame &frame)
-{
-    return QStringLiteral("%1%2").arg(frame.extended ? QStringLiteral("Ext") : QStringLiteral("Std"),
-                                      frame.rtr ? QStringLiteral(" RTR") : QString());
+    return static_cast<quint64>(frame.id) | (frame.extended ? 0x80000000ULL : 0ULL)
+           | (frame.rtr ? 0x40000000ULL : 0ULL) | (frame.fd ? 0x20000000ULL : 0ULL);
 }
 
 } // namespace
@@ -52,10 +46,10 @@ QVariant TraceModel::data(const QModelIndex &index, int role) const
         case ColumnDelta:
             return entry.deltaUs < 0 ? QString() : QString::number(static_cast<double>(entry.deltaUs) / 1000.0, 'f', 1);
         case ColumnDirection: return entry.direction == TraceDirection::Rx ? QStringLiteral("Rx") : QStringLiteral("Tx");
-        case ColumnId: return FormatCanId(frame.id, frame.extended);
-        case ColumnType: return TypeText(frame);
+        case ColumnId: return FormatCanId(frame.id, frame.extended, m_idFormat);
+        case ColumnType: return FormatFrameType(frame);
         case ColumnDlc: return frame.dlc;
-        case ColumnData: return FormatFrameData(frame);
+        case ColumnData: return FormatFrameData(frame, m_dataFormat);
         case ColumnInterpretation: return m_interpreter ? m_interpreter(frame) : QString();
         default: break;
         }
@@ -90,10 +84,12 @@ QVariant TraceModel::headerData(int section, Qt::Orientation orientation, int ro
     case ColumnTime: return tr("Zaman (s)");
     case ColumnDelta: return tr("Δt (ms)");
     case ColumnDirection: return tr("Yön");
-    case ColumnId: return tr("ID (hex)");
+    case ColumnId: return m_idFormat == IdFormat::Hex ? tr("ID (hex)") : tr("ID (dec)");
     case ColumnType: return tr("Tip");
     case ColumnDlc: return tr("DLC");
-    case ColumnData: return tr("Veri");
+    case ColumnData:
+        return m_dataFormat == DataFormat::Hex ? tr("Veri (hex)")
+               : m_dataFormat == DataFormat::Decimal ? tr("Veri (dec)") : tr("Veri (ASCII)");
     case ColumnInterpretation: return tr("CANopen");
     default: break;
     }
@@ -162,6 +158,16 @@ void TraceModel::SetDirectionColors(const QColor &rxColor, const QColor &txColor
     }
 }
 
+void TraceModel::SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat)
+{
+    m_idFormat = idFormat;
+    m_dataFormat = dataFormat;
+    emit headerDataChanged(Qt::Horizontal, 0, ColumnTotal - 1);
+    if (!m_entries.empty()) {
+        emit dataChanged(index(0, ColumnId), index(static_cast<int>(m_entries.size()) - 1, ColumnData));
+    }
+}
+
 const CanFrame *TraceModel::FramePointerAt(int row) const
 {
     if (row < 0 || static_cast<size_t>(row) >= m_entries.size()) {
@@ -186,7 +192,7 @@ QString TraceModel::CsvLine(int row) const
         .arg(entry.deltaUs < 0 ? QString() : QString::number(static_cast<double>(entry.deltaUs) / 1000.0, 'f', 3))
         .arg(entry.direction == TraceDirection::Rx ? QStringLiteral("Rx") : QStringLiteral("Tx"))
         .arg(FormatCanId(entry.frame.id, entry.frame.extended))
-        .arg(TypeText(entry.frame))
+        .arg(FormatFrameType(entry.frame))
         .arg(entry.frame.dlc)
         .arg(FormatFrameData(entry.frame))
         .arg(interpretation);
@@ -198,7 +204,7 @@ void TraceModel::FlushPending()
         // Numara ve Δt değerlerini ekleme sırasında hesapla.
         for (Entry &entry : m_pending) {
             entry.number = m_nextNumber++;
-            const quint32 key = MakeKey(entry.frame) ^ (entry.direction == TraceDirection::Tx ? 0x20000000u : 0u);
+            const quint64 key = MakeKey(entry.frame) | (entry.direction == TraceDirection::Tx ? 0x100000000ULL : 0ULL);
             const auto it = m_lastTimeByKey.constFind(key);
             entry.deltaUs = it == m_lastTimeByKey.constEnd() ? -1 : entry.timeUs - it.value();
             m_lastTimeByKey.insert(key, entry.timeUs);

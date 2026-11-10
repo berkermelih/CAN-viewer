@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSpinBox>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -62,6 +63,8 @@ void FilterPanel::BuildUi()
     m_modeCombo->addItem(MessageFilter::ModeName(FilterMode::SingleId), static_cast<int>(FilterMode::SingleId));
     m_modeCombo->addItem(MessageFilter::ModeName(FilterMode::IdRange), static_cast<int>(FilterMode::IdRange));
     m_modeCombo->addItem(MessageFilter::ModeName(FilterMode::Mask), static_cast<int>(FilterMode::Mask));
+    m_modeCombo->addItem(MessageFilter::ModeName(FilterMode::Bit), static_cast<int>(FilterMode::Bit));
+    m_modeCombo->setItemData(3, tr("Belirli bir ID'nin belirli bir veri bitine göre filtrele"), Qt::ToolTipRole);
     connect(m_modeCombo, &QComboBox::currentIndexChanged, this, &FilterPanel::UpdateInputState);
 
     m_actionCombo = new QComboBox(this);
@@ -77,11 +80,33 @@ void FilterPanel::BuildUi()
     connect(m_firstEdit, &QLineEdit::returnPressed, this, &FilterPanel::AddRuleFromInputs);
     connect(m_secondEdit, &QLineEdit::returnPressed, this, &FilterPanel::AddRuleFromInputs);
 
-    auto *form = new QFormLayout;
+    // Bit modu: bayt numarası, baytın içindeki bit (0 = en düşük bit) ve beklenen değer.
+    m_byteSpin = new QSpinBox(this);
+    m_byteSpin->setRange(0, MaxCanFdDataLength - 1);
+    m_byteSpin->setPrefix(tr("Bayt "));
+    m_byteSpin->setToolTip(tr("Veri baytı numarası (0 = ilk bayt)"));
+    m_bitSpin = new QSpinBox(this);
+    m_bitSpin->setRange(0, 7);
+    m_bitSpin->setPrefix(tr("Bit "));
+    m_bitSpin->setToolTip(tr("Bayt içindeki bit (0 = en düşük anlamlı bit, 7 = en yüksek)"));
+    m_bitValueCombo = new QComboBox(this);
+    m_bitValueCombo->addItem(tr("= 1"), true);
+    m_bitValueCombo->addItem(tr("= 0"), false);
+    m_bitRow = new QWidget(this);
+    auto *bitLayout = new QHBoxLayout(m_bitRow);
+    bitLayout->setContentsMargins(0, 0, 0, 0);
+    bitLayout->setSpacing(6);
+    bitLayout->addWidget(m_byteSpin, 1);
+    bitLayout->addWidget(m_bitSpin, 1);
+    bitLayout->addWidget(m_bitValueCombo);
+
+    m_form = new QFormLayout;
+    QFormLayout *form = m_form;
     form->addRow(tr("Mod:"), m_modeCombo);
     form->addRow(tr("İşlem:"), m_actionCombo);
     form->addRow(tr("ID (hex):"), m_firstEdit);
     form->addRow(m_secondLabel, m_secondEdit);
+    form->addRow(tr("Bit:"), m_bitRow);
 
     auto *addButton = new QPushButton(tr("Ekle"), this);
     addButton->setProperty("primary", true);
@@ -97,7 +122,8 @@ void FilterPanel::BuildUi()
     buttonRow->addWidget(clearButton);
 
     auto *hint = new QLabel(tr("Hariç tut kuralları önceliklidir. En az bir \"Dahil et\" kuralı varsa "
-                               "yalnızca eşleşen ID'ler gösterilir."),
+                               "yalnızca eşleşen ID'ler gösterilir. Bit modunda çerçeve, seçilen ID'den gelmeli "
+                               "ve seçilen bitin değeri eşleşmelidir."),
                             this);
     hint->setWordWrap(true);
     hint->setObjectName(QStringLiteral("MutedText"));
@@ -123,7 +149,10 @@ void FilterPanel::AddRuleFromInputs()
         m_errorLabel->setText(tr("ID geçerli bir hex sayı olmalıdır (en fazla 1FFFFFFF)."));
         return;
     }
-    if (rule.mode != FilterMode::SingleId) {
+    if (rule.mode == FilterMode::Bit) {
+        rule.bitPosition = m_byteSpin->value() * 8 + m_bitSpin->value();
+        rule.bitValue = m_bitValueCombo->currentData().toBool();
+    } else if (rule.mode != FilterMode::SingleId) {
         if (!ParseHexNumber(m_secondEdit->text(), rule.second) || rule.second > MaxExtendedCanId) {
             m_errorLabel->setText(rule.mode == FilterMode::IdRange
                                       ? tr("Aralık sonu geçerli bir hex sayı olmalıdır.")
@@ -206,7 +235,13 @@ void FilterPanel::HandleItemChanged(QTableWidgetItem *item)
 void FilterPanel::UpdateInputState()
 {
     const auto mode = static_cast<FilterMode>(m_modeCombo->currentData().toInt());
+    m_form->setRowVisible(m_secondEdit, mode != FilterMode::Bit);
+    m_form->setRowVisible(m_bitRow, mode == FilterMode::Bit);
     switch (mode) {
+    case FilterMode::Bit:
+        m_secondEdit->clear();
+        m_firstEdit->setPlaceholderText(tr("ör. 185"));
+        break;
     case FilterMode::SingleId:
         m_secondLabel->setText(tr("—"));
         m_secondEdit->setEnabled(false);

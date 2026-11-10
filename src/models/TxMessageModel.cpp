@@ -25,12 +25,10 @@ QVariant TxMessageModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
-        case ColumnId: return FormatCanId(frame.id, frame.extended);
-        case ColumnType:
-            return QStringLiteral("%1%2").arg(frame.extended ? QStringLiteral("Ext") : QStringLiteral("Std"),
-                                              frame.rtr ? QStringLiteral(" RTR") : QString());
+        case ColumnId: return FormatCanId(frame.id, frame.extended, m_idFormat);
+        case ColumnType: return FormatFrameType(frame);
         case ColumnDlc: return frame.dlc;
-        case ColumnData: return FormatFrameData(frame);
+        case ColumnData: return FormatFrameData(frame, m_dataFormat);
         case ColumnPeriod: return message.periodMs > 0 ? QString::number(message.periodMs) : tr("Elle");
         case ColumnCount: return message.count;
         case ColumnComment: return message.comment;
@@ -39,7 +37,7 @@ QVariant TxMessageModel::data(const QModelIndex &index, int role) const
     } else if (role == Qt::CheckStateRole && index.column() == ColumnId && message.periodMs > 0) {
         return message.periodicEnabled ? Qt::Checked : Qt::Unchecked;
     } else if (role == Qt::ToolTipRole && index.column() == ColumnId && message.periodMs > 0) {
-        return tr("Periyodik gönderimi aç/kapat");
+        return tr("İşaretli: periyodik gönderim etkin · işaretsiz: duraklatıldı");
     } else if (role == Qt::TextAlignmentRole) {
         if (index.column() == ColumnDlc || index.column() == ColumnPeriod || index.column() == ColumnCount) {
             return QVariant::fromValue(Qt::AlignRight | Qt::AlignVCenter);
@@ -55,10 +53,12 @@ QVariant TxMessageModel::headerData(int section, Qt::Orientation orientation, in
         return QAbstractTableModel::headerData(section, orientation, role);
     }
     switch (section) {
-    case ColumnId: return tr("ID (hex)");
+    case ColumnId: return m_idFormat == IdFormat::Hex ? tr("ID (hex)") : tr("ID (dec)");
     case ColumnType: return tr("Tip");
     case ColumnDlc: return tr("DLC");
-    case ColumnData: return tr("Veri");
+    case ColumnData:
+        return m_dataFormat == DataFormat::Hex ? tr("Veri (hex)")
+               : m_dataFormat == DataFormat::Decimal ? tr("Veri (dec)") : tr("Veri (ASCII)");
     case ColumnPeriod: return tr("Periyot (ms)");
     case ColumnCount: return tr("Sayaç");
     case ColumnComment: return tr("Açıklama");
@@ -84,6 +84,7 @@ bool TxMessageModel::setData(const QModelIndex &index, const QVariant &value, in
     TxMessage &message = m_messages[index.row()];
     message.periodicEnabled = value.toInt() == Qt::Checked;
     emit dataChanged(index, index, {Qt::CheckStateRole});
+    emit ContentChanged();
     return true;
 }
 
@@ -93,7 +94,57 @@ int TxMessageModel::AddMessage(const TxMessage &message)
     beginInsertRows(QModelIndex(), row, row);
     m_messages.append(message);
     endInsertRows();
+    emit ContentChanged();
     return row;
+}
+
+int TxMessageModel::InsertMessages(int row, const QVector<TxMessage> &messages)
+{
+    if (messages.isEmpty()) {
+        return -1;
+    }
+    const int first = (row < 0 || row > m_messages.size()) ? static_cast<int>(m_messages.size()) : row;
+    beginInsertRows(QModelIndex(), first, first + static_cast<int>(messages.size()) - 1);
+    for (int i = 0; i < messages.size(); ++i) {
+        m_messages.insert(first + i, messages.at(i));
+    }
+    endInsertRows();
+    emit ContentChanged();
+    return first;
+}
+
+void TxMessageModel::SetMessages(const QVector<TxMessage> &messages)
+{
+    beginResetModel();
+    m_messages = messages;
+    endResetModel();
+    emit ContentChanged();
+}
+
+void TxMessageModel::Clear()
+{
+    if (m_messages.isEmpty()) {
+        return;
+    }
+    beginResetModel();
+    m_messages.clear();
+    endResetModel();
+    emit ContentChanged();
+}
+
+const QVector<TxMessage> &TxMessageModel::Messages() const
+{
+    return m_messages;
+}
+
+void TxMessageModel::SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat)
+{
+    m_idFormat = idFormat;
+    m_dataFormat = dataFormat;
+    emit headerDataChanged(Qt::Horizontal, 0, ColumnTotal - 1);
+    if (!m_messages.isEmpty()) {
+        emit dataChanged(index(0, 0), index(static_cast<int>(m_messages.size()) - 1, ColumnTotal - 1));
+    }
 }
 
 void TxMessageModel::UpdateMessage(int row, const TxMessage &message)
@@ -106,6 +157,7 @@ void TxMessageModel::UpdateMessage(int row, const TxMessage &message)
     updated.nextDueMs = m_messages.at(row).nextDueMs;
     m_messages[row] = updated;
     emit dataChanged(index(row, 0), index(row, ColumnTotal - 1));
+    emit ContentChanged();
 }
 
 void TxMessageModel::RemoveMessage(int row)
@@ -116,6 +168,7 @@ void TxMessageModel::RemoveMessage(int row)
     beginRemoveRows(QModelIndex(), row, row);
     m_messages.removeAt(row);
     endRemoveRows();
+    emit ContentChanged();
 }
 
 const TxMessage &TxMessageModel::MessageAt(int row) const

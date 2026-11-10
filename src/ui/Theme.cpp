@@ -1,6 +1,7 @@
 #include "Theme.h"
 
 #include <QApplication>
+#include <QFile>
 #include <QHash>
 #include <QPainter>
 #include <QPainterPath>
@@ -226,9 +227,25 @@ QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {
     background: @window@;
     color: @textMuted@;
 }
+QComboBox {
+    padding-right: 28px;
+}
 QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
     border: none;
-    width: 22px;
+    width: 26px;
+}
+QComboBox::down-arrow {
+    image: url(:/icons/chevron-down-@themeName@.svg);
+    width: 12px;
+    height: 12px;
+}
+QComboBox::down-arrow:disabled {
+    image: url(:/icons/chevron-down-muted.svg);
+}
+QComboBox::down-arrow:on {
+    image: url(:/icons/chevron-up-@themeName@.svg);
 }
 QComboBox QAbstractItemView {
     background: @base@;
@@ -237,9 +254,39 @@ QComboBox QAbstractItemView {
     selection-color: @text@;
     outline: 0;
 }
+QSpinBox {
+    padding-right: 22px;
+}
 QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: border;
     border: none;
-    width: 16px;
+    width: 20px;
+}
+QSpinBox::up-button {
+    subcontrol-position: top right;
+}
+QSpinBox::down-button {
+    subcontrol-position: bottom right;
+}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background: @accentSoft@;
+    border-radius: 4px;
+}
+QSpinBox::up-arrow {
+    image: url(:/icons/chevron-up-@themeName@.svg);
+    width: 9px;
+    height: 9px;
+}
+QSpinBox::down-arrow {
+    image: url(:/icons/chevron-down-@themeName@.svg);
+    width: 9px;
+    height: 9px;
+}
+QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off {
+    image: url(:/icons/chevron-up-muted.svg);
+}
+QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off {
+    image: url(:/icons/chevron-down-muted.svg);
 }
 
 /* --- Sekmeler --- */
@@ -335,6 +382,32 @@ QCheckBox::indicator:disabled {
     background: @window@;
     border-color: @border@;
 }
+QRadioButton {
+    spacing: 8px;
+}
+QRadioButton::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid @textMuted@;
+    border-radius: 8px;
+    background: @base@;
+}
+QRadioButton::indicator:hover {
+    border-color: @accent@;
+}
+QRadioButton::indicator:checked {
+    width: 8px;
+    height: 8px;
+    border: 4px solid @accent@;
+    background: @base@;
+}
+QRadioButton::indicator:disabled {
+    background: @window@;
+    border-color: @border@;
+}
+QRadioButton:disabled {
+    color: @textMuted@;
+}
 
 /* --- Gruplar, paneller --- */
 QGroupBox {
@@ -356,9 +429,24 @@ QGroupBox QLabel, QGroupBox QCheckBox {
 }
 QDockWidget::title {
     background: @surface@;
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-bottom: 1px solid @border@;
     font-weight: 600;
+}
+QMainWindow::separator {
+    background: @border@;
+    width: 4px;
+    height: 4px;
+}
+QMainWindow::separator:hover {
+    background: @accent@;
+}
+QMainWindow > QTabBar {
+    background: @surface@;
+    border-bottom: 1px solid @border@;
+}
+QMainWindow > QTabBar::tab {
+    padding: 8px 18px;
 }
 QDockWidget > QWidget {
     background: @window@;
@@ -456,6 +544,7 @@ QString BuildStyleSheet(const Palette &p)
     };
 
     QString sheet = QString::fromUtf8(StyleSheetTemplate);
+    sheet.replace(QStringLiteral("@themeName@"), g_mode == Mode::Dark ? QStringLiteral("dark") : QStringLiteral("light"));
     for (auto it = tokens.constBegin(); it != tokens.constEnd(); ++it) {
         sheet.replace(QLatin1Char('@') + it.key() + QLatin1Char('@'), it.value().name());
     }
@@ -493,6 +582,13 @@ QPalette BuildQPalette(const Palette &p)
     return palette;
 }
 
+// Renklendirilmiş ikonların önbelleği (anahtar: ad + renk); tema değişince temizlenir.
+QHash<QString, QIcon> &IconCache()
+{
+    static QHash<QString, QIcon> cache;
+    return cache;
+}
+
 } // namespace
 
 void Apply(QApplication &app, Mode mode)
@@ -511,6 +607,7 @@ void Apply(QApplication &app, Mode mode)
 
     QApplication::setPalette(BuildQPalette(g_palette));
     app.setStyleSheet(BuildStyleSheet(g_palette));
+    IconCache().clear();
 }
 
 Mode CurrentMode()
@@ -574,6 +671,31 @@ QIcon CreateAppIcon()
         painter.end();
         icon.addPixmap(pixmap);
     }
+    return icon;
+}
+
+QIcon Icon(const QString &name, const QColor &color)
+{
+    const QColor effective = color.isValid() ? color : g_palette.textSecondary;
+    const QString key = name + QLatin1Char('|') + effective.name();
+    QHash<QString, QIcon> &cache = IconCache();
+    const auto it = cache.constFind(key);
+    if (it != cache.constEnd()) {
+        return it.value();
+    }
+
+    QIcon icon;
+    QFile file(QStringLiteral(":/icons/%1.svg").arg(name));
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray svg = file.readAll();
+        svg.replace("currentColor", effective.name().toLatin1());
+        QPixmap pixmap;
+        // SVG, Qt'nin "svg" resim biçimi eklentisiyle (qsvg) çizilir; ek modül bağlamak gerekmez.
+        if (pixmap.loadFromData(svg, "SVG")) {
+            icon.addPixmap(pixmap);
+        }
+    }
+    cache.insert(key, icon);
     return icon;
 }
 

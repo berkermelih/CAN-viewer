@@ -9,8 +9,8 @@
  * @brief Donanım gerektirmeyen sanal (loopback) CAN arayüzü.
  *
  * Gönderilen her çerçeve, olay döngüsünün bir sonraki turunda alınmış gibi
- * geri bildirilir. Arayüzü ve filtreleri donanımsız denemek için kullanılır;
- * gerçek bir CANopen düğümünü simüle etmez.
+ * geri bildirilir. Yalnızca testlerde ve donanımsız geliştirmede kullanılır;
+ * uygulamanın port listesinde gösterilmez. Gerçek bir CANopen düğümünü simüle etmez.
  */
 class VirtualCanInterface : public ICanInterface
 {
@@ -24,10 +24,13 @@ public:
     explicit VirtualCanInterface(QObject *parent = nullptr);
 
     /**
-     * @brief Sanal kanalı açar; kanal adı ve bit hızı yalnızca bilgi amaçlıdır.
+     * @brief Sanal kanalı açar; ayarlardan yalnızca CAN FD modu dikkate alınır.
      * @return Her zaman true.
      */
-    bool Open(const QString &channel, int bitrate, QString &errorText) override;
+    bool Open(const CanBusSettings &settings, QString &errorText) override;
+
+    /// Kanal CAN FD modunda açıldıysa true döndürür.
+    bool IsFdMode() const override;
 
     /// Sanal kanalı kapatır; bekleyen çerçeveler atılır.
     void Close() override;
@@ -44,14 +47,12 @@ public:
     /// "Sanal (loopback)" adını döndürür.
     QString Name() const override;
 
-    /// Kanal seçim listesinde sanal arayüzü temsil eden ad.
-    static QString ChannelName();
-
 private:
     /// Bekleyen çerçeveleri FramesReceived sinyaliyle yayar.
     void FlushPendingFrames();
 
     bool m_open = false;
+    bool m_fd = false;
     bool m_flushScheduled = false;
     QElapsedTimer m_clock;
     QVector<CanFrame> m_pendingFrames;

@@ -7,16 +7,19 @@
 
 class QCheckBox;
 class QComboBox;
+class QFormLayout;
 class QLabel;
 class QLineEdit;
+class QSpinBox;
 class QTableWidget;
 class QTableWidgetItem;
 
 /**
  * @brief Mesaj/adres filtre kurallarını düzenleyen panel.
  *
- * Kurallar tek ID, ID aralığı veya maske olarak eklenir ve dahil et /
- * hariç tut olarak işaretlenir. Her değişiklikte FilterChanged yayılır.
+ * Kurallar tek ID, ID aralığı, maske veya bit (belirli bir ID'nin belirli bir
+ * veri bitinin 0/1 olması) olarak eklenir ve dahil et / hariç tut olarak
+ * işaretlenir. Her değişiklikte FilterChanged yayılır.
  */
 class FilterPanel : public QWidget
 {
@@ -66,6 +69,11 @@ private:
     QLineEdit *m_firstEdit = nullptr;
     QLineEdit *m_secondEdit = nullptr;
     QLabel *m_secondLabel = nullptr;
+    QFormLayout *m_form = nullptr;
+    QWidget *m_bitRow = nullptr;
+    QSpinBox *m_byteSpin = nullptr;
+    QSpinBox *m_bitSpin = nullptr;
+    QComboBox *m_bitValueCombo = nullptr;
     QLabel *m_errorLabel = nullptr;
     bool m_updatingTable = false;
 };

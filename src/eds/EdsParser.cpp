@@ -54,6 +54,10 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
     dictionary.SetDeviceInfo(document.value(QStringLiteral("deviceinfo")));
     dictionary.SetFileInfoEntries(orderedSections.value(QStringLiteral("fileinfo")));
     dictionary.SetDeviceInfoEntries(orderedSections.value(QStringLiteral("deviceinfo")));
+    // DCF: CiA 306 bölüm adı "DeviceComissioning" (standarttaki yazımla); "Commissioning" da kabul edilir.
+    dictionary.SetCommissioningEntries(orderedSections.contains(QStringLiteral("devicecomissioning"))
+                                           ? orderedSections.value(QStringLiteral("devicecomissioning"))
+                                           : orderedSections.value(QStringLiteral("devicecommissioning")));
 
     for (auto it = objectSections.constBegin(); it != objectSections.constEnd(); ++it) {
         const quint16 index = it.key();
@@ -162,6 +166,7 @@ OdEntry EdsParser::ParseEntry(const IniSection &section, quint16 index, quint8 s
     entry.dataType = static_cast<quint16>(ParseEdsNumber(section.value(QStringLiteral("datatype"))).value_or(0));
     entry.accessType = section.value(QStringLiteral("accesstype")).toLower();
     entry.defaultValue = section.value(QStringLiteral("defaultvalue"));
+    entry.parameterValue = section.value(QStringLiteral("parametervalue"));
     entry.lowLimit = section.value(QStringLiteral("lowlimit"));
     entry.highLimit = section.value(QStringLiteral("highlimit"));
     entry.pdoMapping = ParseEdsNumber(section.value(QStringLiteral("pdomapping"))).value_or(0) != 0;
@@ -192,6 +197,7 @@ void EdsParser::ExpandCompactSubObjects(const IniDocument &document, const IniSe
         const QString key = QString::number(sub);
         entry.name = names.value(key, QStringLiteral("%1%2").arg(object.name).arg(sub));
         entry.defaultValue = values.value(key, templateEntry.defaultValue);
+        entry.parameterValue.clear(); // CompactSubObj nesnelerinde DCF değeri desteklenmez
         object.entries.append(entry);
     }
 }

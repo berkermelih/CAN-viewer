@@ -98,6 +98,19 @@ public:
      */
     void SetHighlightColor(const QColor &color);
 
+    /**
+     * @brief Verilen satırları siler (sıra ve tekrarlar önemli değildir).
+     * @param rows Kaynak modeldeki satır numaraları.
+     */
+    void RemoveRows(QList<int> rows);
+
+    /**
+     * @brief ID ve veri sütunlarının gösterim biçimini ayarlar.
+     * @param idFormat Hex veya onluk ID.
+     * @param dataFormat Hex, onluk veya ASCII veri.
+     */
+    void SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat);
+
 private:
     struct Entry
     {
@@ -121,6 +134,8 @@ private:
     QHash<quint32, int> m_rowByKey;
     InterpreterFunction m_interpreter;
     QColor m_highlightColor;
+    IdFormat m_idFormat = IdFormat::Hex;
+    DataFormat m_dataFormat = DataFormat::Hex;
     QElapsedTimer m_clock;
     QTimer m_highlightTimer;
 };

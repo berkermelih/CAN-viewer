@@ -1,6 +1,24 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
+<RCC>
     <qresource prefix="/">
         <file>icons/check.svg</file>
+        <file>icons/chevron-down-dark.svg</file>
+        <file>icons/chevron-down-light.svg</file>
+        <file>icons/chevron-down-muted.svg</file>
+        <file>icons/chevron-up-dark.svg</file>
+        <file>icons/chevron-up-light.svg</file>
+        <file>icons/chevron-up-muted.svg</file>
+        <file>icons/clear.svg</file>
+        <file>icons/copy.svg</file>
+        <file>icons/cut.svg</file>
+        <file>icons/delete.svg</file>
+        <file>icons/edit.svg</file>
+        <file>icons/export.svg</file>
+        <file>icons/layout.svg</file>
+        <file>icons/new.svg</file>
+        <file>icons/open.svg</file>
+        <file>icons/paste.svg</file>
+        <file>icons/pause.svg</file>
+        <file>icons/save.svg</file>
+        <file>icons/send.svg</file>
     </qresource>
 </RCC>

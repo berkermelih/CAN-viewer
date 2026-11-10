@@ -131,7 +131,7 @@ void SdoClient::Cancel()
 
 void SdoClient::HandleFrame(const CanFrame &frame)
 {
-    if (m_state == State::Idle || frame.extended || frame.rtr
+    if (m_state == State::Idle || frame.extended || frame.rtr || frame.fd
         || frame.id != CanOpen::SdoResponseBase + m_nodeId || frame.dlc < 1) {
         return;
     }
@@ -263,7 +263,7 @@ bool SdoClient::SendRequest(const std::array<quint8, 8> &payload, QString &error
     CanFrame frame;
     frame.id = CanOpen::SdoRequestBase + m_nodeId;
     frame.dlc = 8;
-    frame.data = payload;
+    std::copy(payload.begin(), payload.end(), frame.data.begin());
     if (!m_send(frame, errorText)) {
         return false;
     }

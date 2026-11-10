@@ -57,6 +57,7 @@ struct OdEntry
     quint16 dataType = 0;
     QString accessType;   ///< ro, wo, rw, rwr, rww, const (küçük harf)
     QString defaultValue; ///< EDS'teki ham metin; $NODEID içerebilir
+    QString parameterValue; ///< DCF'teki "ParameterValue" (cihaza yazılacak ayar); EDS'te boş
     QString lowLimit;
     QString highLimit;
     bool pdoMapping = false;
@@ -131,6 +132,22 @@ public:
     /// [DeviceInfo] satırlarını dosyadaki sıra ve yazımla döndürür.
     const InfoEntries &DeviceInfoEntries() const;
 
+    /// DCF [DeviceComissioning] satırlarını ayarlar (NodeID, Baudrate ...).
+    void SetCommissioningEntries(const InfoEntries &entries);
+
+    /// DCF [DeviceComissioning] satırlarını döndürür; EDS dosyasında boştur.
+    const InfoEntries &CommissioningEntries() const;
+
+    /**
+     * @brief [DeviceComissioning] içinden bir değeri büyük/küçük harf duyarsız arar.
+     * @param key Anahtar (ör. "NodeID").
+     * @return Bulunamazsa boş metin.
+     */
+    QString CommissioningValue(const QString &key) const;
+
+    /// Herhangi bir girdide ParameterValue varsa (dosya DCF ise) true döndürür.
+    bool HasParameterValues() const;
+
     /// Sözlüğün yüklendiği dosya yolunu ayarlar.
     void SetFilePath(const QString &filePath);
 
@@ -143,6 +160,7 @@ private:
     QHash<QString, QString> m_deviceInfo;
     InfoEntries m_fileInfoEntries;
     InfoEntries m_deviceInfoEntries;
+    InfoEntries m_commissioningEntries;
     QString m_filePath;
 };
 

@@ -7,13 +7,12 @@ VirtualCanInterface::VirtualCanInterface(QObject *parent)
 {
 }
 
-bool VirtualCanInterface::Open(const QString &channel, int bitrate, QString &errorText)
+bool VirtualCanInterface::Open(const CanBusSettings &settings, QString &errorText)
 {
-    Q_UNUSED(channel)
-    Q_UNUSED(bitrate)
     Q_UNUSED(errorText)
 
     m_open = true;
+    m_fd = settings.fd;
     m_pendingFrames.clear();
     m_clock.start();
     emit BusStatusChanged(tr("Sanal bus (loopback)"));
@@ -31,10 +30,19 @@ bool VirtualCanInterface::IsOpen() const
     return m_open;
 }
 
+bool VirtualCanInterface::IsFdMode() const
+{
+    return m_fd;
+}
+
 bool VirtualCanInterface::WriteFrame(const CanFrame &frame, QString &errorText)
 {
     if (!m_open) {
         errorText = tr("Sanal kanal açık değil.");
+        return false;
+    }
+    if (frame.fd && !m_fd) {
+        errorText = tr("Kanal CAN FD modunda açılmadı.");
         return false;
     }
 
@@ -52,11 +60,6 @@ bool VirtualCanInterface::WriteFrame(const CanFrame &frame, QString &errorText)
 QString VirtualCanInterface::Name() const
 {
     return tr("Sanal (loopback)");
-}
-
-QString VirtualCanInterface::ChannelName()
-{
-    return QStringLiteral("VIRTUAL");
 }
 
 void VirtualCanInterface::FlushPendingFrames()

@@ -2,8 +2,10 @@
 #define MAINWINDOW_H
 
 #include "src/can/CanFrame.h"
+#include "src/can/PcanInterface.h"
 
 #include <QElapsedTimer>
+#include <QList>
 #include <QMainWindow>
 #include <QTimer>
 
@@ -15,14 +17,19 @@ class FrameFilterProxyModel;
 class ICanInterface;
 class QAction;
 class QCheckBox;
+class QCloseEvent;
 class QComboBox;
+class QDockWidget;
 class QLabel;
+class QMenu;
 class QPushButton;
 class QTableView;
-class QTabWidget;
 class RxMessageModel;
 class TraceModel;
+class ThemeSwitch;
+class TxMessageDialog;
 class TxMessageModel;
+class UpdateChecker;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -33,10 +40,13 @@ QT_END_NAMESPACE
 /**
  * @brief Canbus Analyzer ana penceresi.
  *
- * Bağlantı araç çubuğu, Mesajlar (Rx/Tx), Trace ve CANopen/EDS sekmeleri,
- * filtre paneli ve durum çubuğunu bir araya getirir. CAN arayüzü (PCAN veya
- * sanal) bağlantı anında oluşturulur; tüm gönderimler SendFrame() üzerinden
- * yapılır ve Trace'e kaydedilir.
+ * Bağlantı araç çubuğu, Mesajlar (Rx/Tx), Trace ve CANopen/EDS panelleri,
+ * filtre paneli ve durum çubuğunu bir araya getirir. Paneller birer
+ * QDockWidget'tır: sekme olarak üst üste durabilir, sekmesinden sürüklenerek
+ * ayrı pencereye alınabilir veya ekran bölünerek yan yana / alt alta
+ * yerleştirilebilir; düzen oturumlar arasında saklanır. PCAN portları
+ * otomatik algılanır. Tüm gönderimler SendFrame() üzerinden yapılır ve
+ * Trace'e kaydedilir. Gönderim listesi .cantx dosyasına kaydedilip açılabilir.
  */
 class MainWindow : public QMainWindow
 {
@@ -52,25 +62,46 @@ public:
     /// Açık bağlantıyı kapatır ve UI nesnesini siler.
     ~MainWindow() override;
 
+protected:
+    /**
+     * @brief Kapatmadan önce kaydedilmemiş gönderim listesini sorar, pencere düzenini saklar.
+     * @param event Kapatma olayı; kullanıcı iptal ederse yok sayılır.
+     */
+    void closeEvent(QCloseEvent *event) override;
+
 private:
-    /// Menüler, araç çubuğu, sekmeler, paneller ve durum çubuğunu oluşturur.
+    /// Menüler, araç çubuğu, paneller ve durum çubuğunu oluşturur.
     void BuildUi();
 
-    /// Bağlantı araç çubuğunu (marka, kanal, bit hızı, bağlan) oluşturur.
+    /// Tablo eylemlerini (kes, kopyala, yapıştır, sil, biçim ...) ve kısayollarını oluşturur.
+    void BuildActions();
+
+    /// Bağlantı araç çubuğunu (marka, port, mod, bit hızları, bağlan) oluşturur.
     void BuildToolBar();
 
     /// Menü çubuğunu oluşturur.
     void BuildMenus();
 
+    /// Mesajlar, Trace, CANopen/EDS ve Filtre panellerini dock olarak oluşturur.
+    void BuildDocks();
+
     /**
-     * @brief Rx ve Tx tablolarını içeren "Mesajlar" sekmesini oluşturur.
-     * @return Sekme widget'ı.
+     * @brief Sürüklenebilir, ayrılabilir bir panel (dock) oluşturur.
+     * @param title Sekme / başlık metni.
+     * @param objectName Düzen kaydı için benzersiz ad.
+     * @param content Panel içeriği.
+     */
+    QDockWidget *CreateDock(const QString &title, const QString &objectName, QWidget *content);
+
+    /**
+     * @brief Rx ve Tx tablolarını içeren "Mesajlar" panelini oluşturur.
+     * @return Panel widget'ı.
      */
     QWidget *BuildMessagesPage();
 
     /**
-     * @brief Kronolojik çerçeve kaydını gösteren "Trace" sekmesini oluşturur.
-     * @return Sekme widget'ı.
+     * @brief Kronolojik çerçeve kaydını gösteren "Trace" panelini oluşturur.
+     * @return Panel widget'ı.
      */
     QWidget *BuildTracePage();
 
@@ -83,19 +114,43 @@ private:
      */
     void ConfigureTableView(QTableView *view) const;
 
+    /// Mesajlar, Trace ve CANopen panellerini tek sekme grubunda toplar (varsayılan düzen).
+    void ApplyTabbedLayout();
+
+    /// Ekranı üçe böler: solda Mesajlar, sağ üstte Trace, sağ altta CANopen/EDS.
+    void ApplySplitLayout();
+
+    /// Sekme grubundaki panellerin başlık çubuğunu gizler (sekme zaten başlık görevi görür).
+    void UpdateDockTitleBars();
+
+    /// Kayıtlı pencere boyutu ve panel düzenini geri yükler; yoksa varsayılan düzeni uygular.
+    void RestoreWindowLayout();
+
     /**
      * @brief Açık/koyu temayı uygular ve tercihi kaydeder.
      * @param dark true ise koyu tema.
      */
     void SetDarkTheme(bool dark);
 
-    /// Tema renklerine bağlı model ve panel renklerini günceller.
+    /// Tema renklerine bağlı model, panel ve ikon renklerini günceller.
     void ApplyThemeColors();
 
-    /// Bağlıysa bağlantıyı keser, değilse seçili kanala bağlanır.
+    /// Eylem ve düğme ikonlarını güncel tema renkleriyle yeniden atar.
+    void RefreshActionIcons();
+
+    /// Bağlı PCAN kanallarını algılar ve port listesini günceller (bağlı değilken periyodik).
+    void RefreshPorts();
+
+    /// Seçili porta göre CAN FD seçeneğini etkinleştirir / devre dışı bırakır.
+    void UpdateModeAvailability();
+
+    /// Seçili moda (CAN CC / CAN FD) göre bit hızı listelerini doldurur.
+    void UpdateBitrateCombos();
+
+    /// Bağlıysa bağlantıyı keser, değilse seçili porta bağlanır.
     void ToggleConnection();
 
-    /// Seçili kanal ve bit hızıyla CAN arayüzünü açar.
+    /// Seçili port, mod ve bit hızlarıyla CAN arayüzünü açar.
     void ConnectToBus();
 
     /// CAN arayüzünü kapatır ve periyodik gönderimleri durdurur.
@@ -118,6 +173,12 @@ private:
      */
     bool SendFrame(const CanFrame &frame, QString &errorText);
 
+    /**
+     * @brief Tx diyaloğunu seçili adaptörün yeteneklerine göre ayarlar (CAN FD desteği).
+     * @param dialog Açılacak diyalog.
+     */
+    void ConfigureTxDialog(TxMessageDialog &dialog) const;
+
     /// Yeni gönderim mesajı ekleme diyaloğunu açar.
     void AddTxMessage();
 
@@ -130,8 +191,114 @@ private:
     /// Seçili gönderim mesajlarını birer kez gönderir.
     void SendSelectedTxMessages();
 
+    /// Seçili gönderim mesajlarını panoya kopyalar (metin + uygulama içi biçim).
+    void CopyTxMessages();
+
+    /// Seçili gönderim mesajlarını panoya kopyalar ve listeden siler.
+    void CutTxMessages();
+
+    /// Panodaki gönderim mesajlarını seçili satırın altına ekler.
+    void PasteTxMessages();
+
+    /// Onay aldıktan sonra tüm gönderim listesini siler.
+    void ClearTxMessages();
+
     /// Zamanı gelen periyodik mesajları gönderir (1 ms zamanlayıcıdan çağrılır).
     void ProcessPeriodicTx();
+
+    /// Seçili Rx satırlarını sekmeyle ayrılmış metin olarak panoya kopyalar.
+    void CopyRxRows();
+
+    /// Seçili Rx satırlarını tablodan siler (ID yeniden gelirse tekrar görünür).
+    void RemoveRxRows();
+
+    /// Seçili Trace satırlarını sekmeyle ayrılmış metin olarak panoya kopyalar.
+    void CopyTraceRows();
+
+    /**
+     * @brief Tablonun seçili satırlarını başlık satırıyla birlikte sekmeyle ayrılmış metne çevirir.
+     * @param view Kaynak tablo.
+     * @return Panoya yazılacak metin; seçim yoksa boş.
+     */
+    QString SelectedRowsText(const QTableView *view) const;
+
+    /**
+     * @brief Rx tablosu sağ tık menüsünü gösterir.
+     * @param position Tablo görünüm alanındaki tıklama noktası.
+     */
+    void ShowRxContextMenu(const QPoint &position);
+
+    /**
+     * @brief Tx tablosu sağ tık menüsünü gösterir (PCAN-View düzeni).
+     * @param position Tablo görünüm alanındaki tıklama noktası.
+     */
+    void ShowTxContextMenu(const QPoint &position);
+
+    /**
+     * @brief Trace tablosu sağ tık menüsünü gösterir.
+     * @param position Tablo görünüm alanındaki tıklama noktası.
+     */
+    void ShowTraceContextMenu(const QPoint &position);
+
+    /**
+     * @brief "CAN ID biçimi" ve "Veri biçimi" alt menülerini ekler.
+     * @param menu Hedef menü.
+     */
+    void AddFormatMenus(QMenu *menu);
+
+    /**
+     * @brief Tüm tablolarda ID ve veri gösterim biçimini değiştirir ve kaydeder.
+     * @param idFormat ID biçimi.
+     * @param dataFormat Veri biçimi.
+     */
+    void SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat);
+
+    /// Gönderim listesini dosyadan açar (kaydedilmemiş değişiklik varsa önce sorar).
+    void OpenTxList();
+
+    /**
+     * @brief Verilen gönderim listesi dosyasını yükler.
+     * @param filePath .cantx dosyası.
+     * @return Yüklendiyse true; hata kullanıcıya gösterilir.
+     */
+    bool LoadTxListFile(const QString &filePath);
+
+    /**
+     * @brief Gönderim listesini mevcut dosyasına kaydeder; dosya yoksa "Farklı kaydet" açılır.
+     * @return Kaydedildiyse true.
+     */
+    bool SaveTxList();
+
+    /**
+     * @brief Gönderim listesini yeni bir dosyaya kaydeder.
+     * @return Kaydedildiyse true.
+     */
+    bool SaveTxListAs();
+
+    /**
+     * @brief Gönderim listesini verilen yola yazar ve son kullanılanlara ekler.
+     * @param filePath Hedef dosya.
+     * @return Yazıldıysa true; hata kullanıcıya gösterilir.
+     */
+    bool WriteTxListFile(const QString &filePath);
+
+    /**
+     * @brief Kaydedilmemiş gönderim listesi varsa kaydet / vazgeç / iptal sorar.
+     * @return Devam edilebilirse true, kullanıcı iptal ettiyse false.
+     */
+    bool ConfirmDiscardTxChanges();
+
+    /**
+     * @brief Dosyayı "Son kullanılan listeler" başına ekler.
+     * @param filePath Dosya yolu.
+     */
+    void AddRecentTxList(const QString &filePath);
+
+    /// "Son kullanılan listeler" alt menüsünü yeniden oluşturur.
+    void RebuildRecentMenu();
+
+    /// Pencere başlığını açık gönderim listesinin adıyla günceller.
+    void UpdateWindowTitle();
 
     /// Rx/Tx sayaçlarını, filtre ve trace bilgisini durum çubuğunda günceller.
     void UpdateStatistics();
@@ -145,11 +312,17 @@ private:
     /// Trace'in (filtre uygulanmışsa görünen) satırlarını CSV dosyasına kaydeder.
     void ExportTrace();
 
+    /// CANopen/EDS panelini öne getirir ve EDS dosya seçme diyaloğunu açar.
+    void BrowseEdsFile();
+
     /// Trace için kayıt başlangıcına göre şimdiki zamanı (µs) döndürür.
     qint64 TraceTimeUs() const;
 
     /// Seçili Tx satır numaralarını (küçükten büyüğe) döndürür.
     QList<int> SelectedTxRows() const;
+
+    /// GitHub'da daha yeni bir sürüm olup olmadığını denetler ve sonucu gösterir.
+    void CheckForUpdates();
 
     /// Hakkında penceresini gösterir.
     void ShowAboutDialog();
@@ -165,12 +338,21 @@ private:
     FilterPanel *m_filterPanel = nullptr;
     CanOpenPanel *m_canOpenPanel = nullptr;
 
-    QTabWidget *m_tabs = nullptr;
+    QDockWidget *m_messagesDock = nullptr;
+    QDockWidget *m_traceDock = nullptr;
+    QDockWidget *m_canOpenDock = nullptr;
+    QDockWidget *m_filterDock = nullptr;
+
     QTableView *m_rxView = nullptr;
     QTableView *m_txView = nullptr;
     QTableView *m_traceView = nullptr;
-    QComboBox *m_channelCombo = nullptr;
+    QComboBox *m_portCombo = nullptr;
+    QComboBox *m_modeCombo = nullptr;
     QComboBox *m_bitrateCombo = nullptr;
+    QComboBox *m_dataBitrateCombo = nullptr;
+    QLabel *m_dataBitrateLabel = nullptr;
+    QAction *m_dataBitrateLabelAction = nullptr;
+    QAction *m_dataBitrateComboAction = nullptr;
     QAction *m_connectAction = nullptr;
     QAction *m_darkThemeAction = nullptr;
     QWidget *m_connectButton = nullptr;
@@ -178,12 +360,46 @@ private:
     QCheckBox *m_traceFilterCheck = nullptr;
     QPushButton *m_tracePauseButton = nullptr;
     QLabel *m_traceCountLabel = nullptr;
+    QPushButton *m_txOpenButton = nullptr;
+    QPushButton *m_txSaveButton = nullptr;
+    ThemeSwitch *m_themeSwitch = nullptr;
+    UpdateChecker *m_updateChecker = nullptr;
+    QTimer m_dockCheckTimer;
+
+    // Tablo eylemleri
+    QAction *m_txNewAction = nullptr;
+    QAction *m_txEditAction = nullptr;
+    QAction *m_txSendAction = nullptr;
+    QAction *m_txCutAction = nullptr;
+    QAction *m_txCopyAction = nullptr;
+    QAction *m_txPasteAction = nullptr;
+    QAction *m_txDeleteAction = nullptr;
+    QAction *m_txClearAction = nullptr;
+    QAction *m_rxCopyAction = nullptr;
+    QAction *m_rxDeleteAction = nullptr;
+    QAction *m_clearRxAction = nullptr;
+    QAction *m_traceCopyAction = nullptr;
+    QAction *m_openTxListAction = nullptr;
+    QAction *m_saveTxListAction = nullptr;
+    QAction *m_saveTxListAsAction = nullptr;
+    QAction *m_exportTraceAction = nullptr;
+    QAction *m_openEdsAction = nullptr;
+    QMenu *m_recentMenu = nullptr;
 
     QLabel *m_connectionLabel = nullptr;
     QLabel *m_busStatusLabel = nullptr;
     QLabel *m_rxCountLabel = nullptr;
     QLabel *m_txCountLabel = nullptr;
     QLabel *m_filterLabel = nullptr;
+
+    QList<PcanChannelInfo> m_ports;
+    QString m_portError;
+    QTimer m_portScanTimer;
+
+    QString m_txListPath;
+    bool m_txListModified = false;
+    IdFormat m_idFormat = IdFormat::Hex;
+    DataFormat m_dataFormat = DataFormat::Hex;
 
     QTimer m_txTimer;
     QTimer m_statisticsTimer;

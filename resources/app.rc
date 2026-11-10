@@ -1,0 +1,2 @@
+// Windows exe icon (Explorer, desktop shortcut, taskbar)
+IDI_ICON1 ICON "app.ico"

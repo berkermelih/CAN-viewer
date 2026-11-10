@@ -1,9 +1,11 @@
 #include "CanOpenPanel.h"
 
 #include "../canopen/SdoClient.h"
+#include "../eds/DcfWriter.h"
 #include "../eds/EdsParser.h"
 #include "Theme.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDateTime>
 #include <QFileDialog>
@@ -17,15 +19,22 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QDir>
 #include <QPlainTextEdit>
+#include <QProgressBar>
+#include <QRegularExpression>
 #include <QPushButton>
+#include <QSet>
+#include <QSettings>
 #include <QSortFilterProxyModel>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStandardItemModel>
+#include <QTimer>
 #include <QTreeView>
 #include <QVBoxLayout>
 
+#include <algorithm>
 #include <utility>
 
 namespace {
@@ -37,6 +46,7 @@ enum TreeColumn
     TreeColumnType,
     TreeColumnAccess,
     TreeColumnDefault,
+    TreeColumnParameter,
     TreeColumnPdo,
     TreeColumnValue,
     TreeColumnTotal
@@ -89,10 +99,11 @@ void CanOpenPanel::BuildUi()
     // --- Sol: EDS ağacı ---
     auto *titleLabel = new QLabel(tr("Nesne sözlüğü"), this);
     titleLabel->setObjectName(QStringLiteral("SectionTitle"));
-    auto *openButton = new QPushButton(tr("EDS Aç..."), this);
+    auto *openButton = new QPushButton(tr("EDS / DCF Aç..."), this);
+    openButton->setToolTip(tr("EDS (cihaz tanımı) veya DCF (cihaz yapılandırması) dosyası aç"));
     openButton->setProperty("primary", true);
     connect(openButton, &QPushButton::clicked, this, &CanOpenPanel::BrowseEdsFile);
-    m_fileLabel = new QLabel(tr("EDS dosyası yüklenmedi."), this);
+    m_fileLabel = new QLabel(tr("EDS / DCF dosyası yüklenmedi."), this);
     m_fileLabel->setObjectName(QStringLiteral("MutedText"));
     m_fileLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
@@ -109,7 +120,8 @@ void CanOpenPanel::BuildUi()
 
     m_treeModel = new QStandardItemModel(0, TreeColumnTotal, this);
     m_treeModel->setHorizontalHeaderLabels(
-        {tr("Index"), tr("Ad"), tr("Veri tipi"), tr("Erişim"), tr("Varsayılan"), tr("PDO"), tr("Okunan değer")});
+        {tr("Index"), tr("Ad"), tr("Veri tipi"), tr("Erişim"), tr("Varsayılan"), tr("DCF değeri"), tr("PDO"),
+         tr("Okunan değer")});
 
     m_treeProxy = new QSortFilterProxyModel(this);
     m_treeProxy->setSourceModel(m_treeModel);
@@ -130,6 +142,7 @@ void CanOpenPanel::BuildUi()
     m_treeView->setColumnWidth(TreeColumnType, 120);
     m_treeView->setColumnWidth(TreeColumnAccess, 70);
     m_treeView->setColumnWidth(TreeColumnDefault, 130);
+    m_treeView->setColumnWidth(TreeColumnParameter, 110);
     m_treeView->setColumnWidth(TreeColumnPdo, 50);
     connect(m_treeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
             [this](const QModelIndex &current, const QModelIndex &) { HandleTreeSelection(current); });
@@ -253,6 +266,47 @@ void CanOpenPanel::BuildUi()
     rightLayout->setSpacing(8);
     rightLayout->addWidget(nodeGroup);
     rightLayout->addWidget(sdoGroup);
+
+    // --- Parametre seti (DCF) ---
+    m_uploadSetButton = new QPushButton(tr("Cihazdan oku → DCF kaydet..."), this);
+    m_uploadSetButton->setToolTip(tr("EDS'teki parametreleri cihazdan sırayla okur ve değerleriyle birlikte DCF "
+                                     "dosyasına kaydeder (upload)."));
+    m_downloadSetButton = new QPushButton(tr("DCF'ten cihaza yaz..."), this);
+    m_downloadSetButton->setToolTip(tr("Kayıtlı bir DCF dosyasındaki ParameterValue değerlerini cihaza yazar "
+                                       "(download)."));
+    connect(m_uploadSetButton, &QPushButton::clicked, this, &CanOpenPanel::UploadParameterSet);
+    connect(m_downloadSetButton, &QPushButton::clicked, this, &CanOpenPanel::DownloadParameterSet);
+    m_includeReadOnlyCheck = new QCheckBox(tr("Salt okunur nesneleri de oku"), this);
+    m_includeReadOnlyCheck->setToolTip(tr("Kapalıyken yalnızca yazılabilir (rw) parametreler okunur; bunlar daha "
+                                          "sonra geri yüklenebilecek ayarlardır."));
+    m_storeCheck = new QCheckBox(tr("Yazdıktan sonra kalıcı kaydet (1010h:01 \"save\")"), this);
+    m_storeCheck->setToolTip(tr("Cihaz destekliyorsa değerleri kalıcı belleğe kaydeder."));
+    m_batchProgress = new QProgressBar(this);
+    m_batchProgress->setTextVisible(true);
+    m_batchProgress->setVisible(false);
+    m_cancelBatchButton = new QPushButton(tr("İptal"), this);
+    m_cancelBatchButton->setVisible(false);
+    connect(m_cancelBatchButton, &QPushButton::clicked, this, &CanOpenPanel::CancelBatch);
+    m_batchStatusLabel = new QLabel(tr("Yazmadan önce cihazı Pre-operational durumuna almanız önerilir."), this);
+    m_batchStatusLabel->setObjectName(QStringLiteral("MutedText"));
+    m_batchStatusLabel->setWordWrap(true);
+
+    auto *setButtons = new QHBoxLayout;
+    setButtons->addWidget(m_uploadSetButton);
+    setButtons->addWidget(m_downloadSetButton);
+    auto *progressRow = new QHBoxLayout;
+    progressRow->addWidget(m_batchProgress, 1);
+    progressRow->addWidget(m_cancelBatchButton);
+
+    auto *setGroup = new QGroupBox(tr("Parametre seti (DCF)"), this);
+    auto *setLayout = new QVBoxLayout(setGroup);
+    setLayout->setSpacing(6);
+    setLayout->addLayout(setButtons);
+    setLayout->addWidget(m_includeReadOnlyCheck);
+    setLayout->addWidget(m_storeCheck);
+    setLayout->addLayout(progressRow);
+    setLayout->addWidget(m_batchStatusLabel);
+    rightLayout->addWidget(setGroup);
     rightLayout->addWidget(nmtGroup);
     auto *logTitle = new QLabel(tr("Günlük"), this);
     logTitle->setObjectName(QStringLiteral("SectionTitle"));
@@ -290,6 +344,13 @@ bool CanOpenPanel::OpenEdsFile(const QString &filePath)
     PopulateTree();
     RebuildPdoDecoder();
 
+    // DCF: kaydedildiği düğüm numarasını hedef olarak al.
+    const QString commissionedNode = m_dictionary.CommissioningValue(QStringLiteral("NodeID"));
+    if (const auto nodeId = ParseEdsNumber(commissionedNode); nodeId && *nodeId >= 1 && *nodeId <= CanOpen::MaxNodeId) {
+        m_nodeIdSpin->setValue(static_cast<int>(*nodeId));
+        AppendLog(tr("DCF: hedef düğüm %1 olarak ayarlandı ([DeviceComissioning] NodeID).").arg(*nodeId));
+    }
+
     const QString product = m_dictionary.DeviceInfoValue(QStringLiteral("productname"));
     const QString vendor = m_dictionary.DeviceInfoValue(QStringLiteral("vendorname"));
     QString label = QFileInfo(filePath).fileName();
@@ -302,7 +363,8 @@ bool CanOpenPanel::OpenEdsFile(const QString &filePath)
     m_fileLabel->setText(label);
     m_fileLabel->setToolTip(filePath);
 
-    AppendLog(tr("EDS yüklendi: %1 — %2 nesne, %3 PDO tanımı.")
+    AppendLog(tr("%1 yüklendi: %2 — %3 nesne, %4 PDO tanımı.")
+                  .arg(m_dictionary.HasParameterValues() ? QStringLiteral("DCF") : QStringLiteral("EDS"))
                   .arg(QFileInfo(filePath).fileName())
                   .arg(m_dictionary.Objects().size())
                   .arg(m_pdoDecoder.Count()));
@@ -315,8 +377,10 @@ bool CanOpenPanel::OpenEdsFile(const QString &filePath)
 
 void CanOpenPanel::BrowseEdsFile()
 {
-    const QString filePath = QFileDialog::getOpenFileName(this, tr("EDS Dosyası Aç"), QString(),
-                                                          tr("EDS dosyaları (*.eds *.EDS);;Tüm dosyalar (*)"));
+    const QString filePath = QFileDialog::getOpenFileName(
+        this, tr("EDS / DCF Dosyası Aç"), QString(),
+        tr("EDS / DCF dosyaları (*.eds *.EDS *.dcf *.DCF);;EDS dosyaları (*.eds *.EDS);;DCF dosyaları (*.dcf *.DCF);;"
+           "Tüm dosyalar (*)"));
     if (!filePath.isEmpty()) {
         OpenEdsFile(filePath);
     }
@@ -334,6 +398,9 @@ void CanOpenPanel::HandleFrames(const QVector<CanFrame> &frames)
 
 QString CanOpenPanel::InterpretFrame(const CanFrame &frame) const
 {
+    if (frame.fd) {
+        return QString(); // CANopen FD (CiA 1301) bu sürümde yorumlanmaz.
+    }
     const QString pdoText = m_pdoDecoder.DecodeFrame(frame);
     return pdoText.isEmpty() ? CanOpen::DescribeFrame(frame) : pdoText;
 }
@@ -443,10 +510,12 @@ void CanOpenPanel::PopulateTree()
     };
 
     // --- Dosya ve cihaz bilgisi ---
-    if (!m_dictionary.FileInfoEntries().isEmpty() || !m_dictionary.DeviceInfoEntries().isEmpty()) {
+    if (!m_dictionary.FileInfoEntries().isEmpty() || !m_dictionary.DeviceInfoEntries().isEmpty()
+        || !m_dictionary.CommissioningEntries().isEmpty()) {
         QList<QStandardItem *> infoRow = makeGroupRow(tr("Dosya ve cihaz bilgisi"), QStringLiteral("[FileInfo] / [DeviceInfo]"), false);
         appendInfoSection(infoRow.first(), QStringLiteral("FileInfo"), m_dictionary.FileInfoEntries());
         appendInfoSection(infoRow.first(), QStringLiteral("DeviceInfo"), m_dictionary.DeviceInfoEntries());
+        appendInfoSection(infoRow.first(), QStringLiteral("DeviceComissioning"), m_dictionary.CommissioningEntries());
         m_treeModel->appendRow(infoRow);
     }
 
@@ -473,7 +542,8 @@ void CanOpenPanel::PopulateTree()
         indexItem->setData(true, RoleIsEntry);
         QStandardItem *valueItem = MakeItem(QString());
         row << indexItem << MakeItem(name) << MakeItem(DataTypeName(entry.dataType)) << MakeItem(entry.accessType)
-            << MakeItem(entry.defaultValue) << MakeItem(entry.pdoMapping ? tr("Evet") : QString()) << valueItem;
+            << MakeItem(entry.defaultValue) << MakeItem(entry.parameterValue)
+            << MakeItem(entry.pdoMapping ? tr("Evet") : QString()) << valueItem;
         m_valueItems.insert(ValueKey(entry.index, entry.subIndex), valueItem);
         return row;
     };
@@ -645,6 +715,18 @@ bool CanOpenPanel::ReadSdoTarget(quint16 &index, quint8 &subIndex)
 
 void CanOpenPanel::HandleUploadFinished(quint8 nodeId, quint16 index, quint8 subIndex, const QByteArray &data)
 {
+    if (IsBatchActive()) {
+        const BatchItem &item = m_batch.at(m_batchPosition);
+        const QString text = DcfWriter::FormatParameterValue(item.dataType, data);
+        if (!text.isEmpty()) {
+            m_batchValues.insert(DcfWriter::ValueKey(index, subIndex), text);
+        }
+        if (QStandardItem *valueItem = m_valueItems.value(ValueKey(index, subIndex), nullptr)) {
+            valueItem->setText(DecodeValue(item.dataType, data));
+        }
+        AdvanceBatch(true, QString());
+        return;
+    }
     const OdEntry *entry = m_dictionary.FindEntry(index, subIndex);
     const quint16 dataType = entry != nullptr && entry->dataType != 0
                                  ? entry->dataType
@@ -670,12 +752,20 @@ void CanOpenPanel::HandleUploadFinished(quint8 nodeId, quint16 index, quint8 sub
 
 void CanOpenPanel::HandleDownloadFinished(quint8 nodeId, quint16 index, quint8 subIndex)
 {
+    if (IsBatchActive()) {
+        AdvanceBatch(true, QString());
+        return;
+    }
     AppendLog(tr("Node %1: %2 yazma başarılı.").arg(static_cast<uint>(nodeId)).arg(AddressText(index, subIndex)));
     UpdateButtonStates();
 }
 
 void CanOpenPanel::HandleTransferFailed(quint8 nodeId, quint16 index, quint8 subIndex, const QString &reason)
 {
+    if (IsBatchActive()) {
+        AdvanceBatch(false, reason);
+        return;
+    }
     AppendLog(tr("Node %1: %2 SDO hatası — %3").arg(static_cast<uint>(nodeId)).arg(AddressText(index, subIndex), reason));
     UpdateButtonStates();
 }
@@ -696,9 +786,11 @@ void CanOpenPanel::AppendLog(const QString &text)
 
 void CanOpenPanel::UpdateButtonStates()
 {
-    const bool idle = !m_sdoClient->IsBusy();
+    const bool idle = !m_sdoClient->IsBusy() && !IsBatchActive();
     m_readButton->setEnabled(m_connected && idle);
     m_writeButton->setEnabled(m_connected && idle);
+    m_uploadSetButton->setEnabled(m_connected && idle && !m_dictionary.IsEmpty());
+    m_downloadSetButton->setEnabled(m_connected && idle);
     for (QPushButton *button : std::as_const(m_busButtons)) {
         button->setEnabled(m_connected);
     }
@@ -714,4 +806,382 @@ QString CanOpenPanel::AddressText(quint16 index, quint8 subIndex)
     return QStringLiteral("0x%1:%2")
         .arg(QStringLiteral("%1").arg(index, 4, 16, QLatin1Char('0')).toUpper())
         .arg(QStringLiteral("%1").arg(static_cast<uint>(subIndex), 2, 16, QLatin1Char('0')).toUpper());
+}
+
+bool CanOpenPanel::IsReadableAccess(const QString &accessType)
+{
+    return accessType == QLatin1String("ro") || accessType == QLatin1String("rw") || accessType == QLatin1String("rwr")
+           || accessType == QLatin1String("rww") || accessType == QLatin1String("const");
+}
+
+bool CanOpenPanel::IsWritableAccess(const QString &accessType)
+{
+    return accessType == QLatin1String("rw") || accessType == QLatin1String("rwr") || accessType == QLatin1String("rww")
+           || accessType == QLatin1String("wo");
+}
+
+bool CanOpenPanel::IsBatchActive() const
+{
+    return m_batchPosition >= 0;
+}
+
+void CanOpenPanel::UploadParameterSet()
+{
+    if (!m_connected || m_dictionary.IsEmpty() || IsBatchActive()) {
+        return;
+    }
+
+    const QVector<BatchItem> plan = BuildUploadPlan(m_includeReadOnlyCheck->isChecked());
+    if (plan.isEmpty()) {
+        QMessageBox::information(this, tr("Parametre seti"), tr("EDS'te okunabilecek uygun parametre bulunamadı."));
+        return;
+    }
+
+    QSettings settings;
+    const QString directory = settings.value(QStringLiteral("canopen/lastDcfDir")).toString();
+    QString product = m_dictionary.DeviceInfoValue(QStringLiteral("productname")).simplified();
+    product.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_-]+")), QStringLiteral("_"));
+    const QString suggestion = QDir(directory).filePath(
+        QStringLiteral("%1_node%2.dcf").arg(product.isEmpty() ? QStringLiteral("cihaz") : product).arg(m_nodeIdSpin->value()));
+    QString targetPath = QFileDialog::getSaveFileName(this, tr("Parametre setini DCF olarak kaydet"), suggestion,
+                                                      tr("DCF dosyaları (*.dcf)"));
+    if (targetPath.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(targetPath).suffix().isEmpty()) {
+        targetPath += QStringLiteral(".dcf");
+    }
+    m_batchTargetPath = targetPath;
+    AppendLog(tr("Parametre seti okunuyor: %1 nesne, Node %2.").arg(plan.size()).arg(m_nodeIdSpin->value()));
+    StartBatch(plan, true);
+}
+
+void CanOpenPanel::DownloadParameterSet()
+{
+    if (!m_connected || IsBatchActive()) {
+        return;
+    }
+    QSettings settings;
+    const QString lastFile = settings.value(QStringLiteral("canopen/lastDcfFile")).toString();
+    const QString filePath = QFileDialog::getOpenFileName(this, tr("Cihaza yazılacak DCF dosyası"), lastFile,
+                                                          tr("DCF dosyaları (*.dcf *.DCF);;Tüm dosyalar (*)"));
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    QString errorText;
+    QStringList warnings;
+    const std::optional<ObjectDictionary> dcf = EdsParser::OpenEdsFile(filePath, errorText, warnings);
+    if (!dcf) {
+        QMessageBox::warning(this, tr("Parametre seti"), errorText);
+        return;
+    }
+    if (!dcf->HasParameterValues()) {
+        QMessageBox::warning(this, tr("Parametre seti"),
+                             tr("%1 içinde ParameterValue bulunmuyor; dosya bir DCF değil (EDS olabilir).")
+                                 .arg(QFileInfo(filePath).fileName()));
+        return;
+    }
+
+    const quint8 nodeId = static_cast<quint8>(m_nodeIdSpin->value());
+    QVector<BatchItem> plan;
+    int skipped = 0;
+    BuildDownloadPlan(*dcf, nodeId, plan, skipped);
+    if (plan.isEmpty()) {
+        QMessageBox::warning(this, tr("Parametre seti"), tr("DCF'te cihaza yazılabilecek (rw) değer bulunamadı."));
+        return;
+    }
+
+    QString question = tr("%1 dosyasındaki %2 değer Node %3'e yazılacak.")
+                           .arg(QFileInfo(filePath).fileName())
+                           .arg(plan.size())
+                           .arg(nodeId);
+    const auto storedNode = ParseEdsNumber(dcf->CommissioningValue(QStringLiteral("NodeID")));
+    if (storedNode && *storedNode != nodeId) {
+        question += QStringLiteral("\n\n") + tr("Dikkat: DCF Node %1 için kaydedilmiş.").arg(*storedNode);
+    }
+    if (skipped > 0) {
+        question += QStringLiteral("\n") + tr("%1 değer desteklenmeyen tip veya geçersiz biçim nedeniyle atlanacak.").arg(skipped);
+    }
+    question += QStringLiteral("\n\n") + tr("Cihazın Pre-operational durumunda olması önerilir. Devam edilsin mi?");
+    if (QMessageBox::question(this, tr("Parametre setini yaz"), question) != QMessageBox::Yes) {
+        return;
+    }
+
+    settings.setValue(QStringLiteral("canopen/lastDcfFile"), filePath);
+    AppendLog(tr("Parametre seti yazılıyor: %1 → Node %2 (%3 adım).")
+                  .arg(QFileInfo(filePath).fileName())
+                  .arg(nodeId)
+                  .arg(plan.size()));
+    StartBatch(plan, false);
+}
+
+QVector<CanOpenPanel::BatchItem> CanOpenPanel::BuildUploadPlan(bool includeReadOnly) const
+{
+    // Okunacak girdiler: okunabilir, DCF'e yazılabilir tipte; varsayılan olarak yalnızca yazılabilir ayarlar.
+    QVector<BatchItem> plan;
+    const QMap<quint16, OdObject> &objects = m_dictionary.Objects();
+    for (const OdObject &object : objects) {
+        for (const OdEntry &entry : object.entries) {
+            const bool wanted = includeReadOnly ? IsReadableAccess(entry.accessType)
+                                                : IsReadableAccess(entry.accessType) && IsWritableAccess(entry.accessType);
+            if (!wanted || !DcfWriter::IsSupportedType(entry.dataType)) {
+                continue;
+            }
+            BatchItem item;
+            item.index = entry.index;
+            item.subIndex = entry.subIndex;
+            item.dataType = entry.dataType;
+            plan.append(item);
+        }
+    }
+    return plan;
+}
+
+void CanOpenPanel::BuildDownloadPlan(const ObjectDictionary &source, quint8 nodeId, QVector<BatchItem> &plan, int &skipped)
+{
+    plan.clear();
+    skipped = 0;
+
+    // Yazılabilir ve kodlanabilir tüm değerleri topla.
+    QMap<quint32, BatchItem> items;
+    const QMap<quint16, OdObject> &objects = source.Objects();
+    for (const OdObject &object : objects) {
+        for (const OdEntry &entry : object.entries) {
+            if (entry.parameterValue.isEmpty() || !IsWritableAccess(entry.accessType)) {
+                continue;
+            }
+            QString text = entry.parameterValue.trimmed();
+            if (IsSignedIntegerType(entry.dataType) || IsUnsignedIntegerType(entry.dataType)
+                || entry.dataType == CanOpenDataType::Boolean) {
+                bool ok = false;
+                const qlonglong negative = text.toLongLong(&ok, 10);
+                if (ok && negative < 0) {
+                    text = QString::number(negative);
+                } else if (const auto value = ParseEdsNumber(text, nodeId)) {
+                    text = QString::number(*value);
+                } else {
+                    ++skipped;
+                    continue;
+                }
+            }
+            QString errorText;
+            const std::optional<QByteArray> data = EncodeValue(entry.dataType, text, errorText);
+            if (!data || !DcfWriter::IsSupportedType(entry.dataType)) {
+                ++skipped;
+                continue;
+            }
+            BatchItem item;
+            item.index = entry.index;
+            item.subIndex = entry.subIndex;
+            item.dataType = entry.dataType;
+            item.write = true;
+            item.data = *data;
+            items.insert(DcfWriter::ValueKey(entry.index, entry.subIndex), item);
+        }
+    }
+
+    const auto isCommunication = [](quint16 index) {
+        return (index >= 0x1400 && index <= 0x15FF) || (index >= 0x1800 && index <= 0x19FF);
+    };
+    const auto isMapping = [](quint16 index) {
+        return (index >= 0x1600 && index <= 0x17FF) || (index >= 0x1A00 && index <= 0x1BFF);
+    };
+
+    // 1) PDO'ları devre dışı bırak (COB-ID bit 31 = 1).
+    QVector<BatchItem> finalCobIds;
+    for (auto it = items.constBegin(); it != items.constEnd(); ++it) {
+        const BatchItem &item = it.value();
+        if (isCommunication(item.index) && item.subIndex == 1 && item.data.size() == 4) {
+            BatchItem disable = item;
+            disable.data[3] = static_cast<char>(static_cast<quint8>(disable.data.at(3)) | 0x80);
+            disable.note = tr("PDO devre dışı");
+            plan.append(disable);
+            finalCobIds.append(item);
+        }
+    }
+
+    // 2) PDO eşlemeleri: sub0 = 0, girdiler, sub0 = n.
+    QSet<quint16> mappingIndexes;
+    for (auto it = items.constBegin(); it != items.constEnd(); ++it) {
+        if (isMapping(it.value().index)) {
+            mappingIndexes.insert(it.value().index);
+        }
+    }
+    QList<quint16> sortedMappings(mappingIndexes.begin(), mappingIndexes.end());
+    std::sort(sortedMappings.begin(), sortedMappings.end());
+    for (const quint16 index : std::as_const(sortedMappings)) {
+        const quint32 countKey = DcfWriter::ValueKey(index, 0);
+        const bool hasCount = items.contains(countKey);
+        if (hasCount) {
+            BatchItem clear = items.value(countKey);
+            clear.data = QByteArray(clear.data.size(), '\0');
+            clear.note = tr("eşleme temizleniyor");
+            plan.append(clear);
+        }
+        for (auto it = items.constBegin(); it != items.constEnd(); ++it) {
+            if (it.value().index == index && it.value().subIndex != 0) {
+                plan.append(it.value());
+            }
+        }
+        if (hasCount) {
+            plan.append(items.value(countKey));
+        }
+    }
+
+    // 3) Diğer tüm parametreler (index sırasıyla).
+    for (auto it = items.constBegin(); it != items.constEnd(); ++it) {
+        const BatchItem &item = it.value();
+        if (isMapping(item.index) || (isCommunication(item.index) && item.subIndex == 1)) {
+            continue;
+        }
+        plan.append(item);
+    }
+
+    // 4) PDO COB-ID'lerini son değerleriyle yaz (DCF'teki geçerlilik biti korunur).
+    for (BatchItem item : std::as_const(finalCobIds)) {
+        item.note = tr("PDO COB-ID son değer");
+        plan.append(item);
+    }
+
+    // 5) İsteğe bağlı: kalıcı kaydet.
+    if (m_storeCheck->isChecked()) {
+        BatchItem store;
+        store.index = 0x1010;
+        store.subIndex = 1;
+        store.dataType = CanOpenDataType::Unsigned32;
+        store.write = true;
+        store.data = QByteArrayLiteral("save"); // 0x65766173, little-endian
+        store.note = tr("kalıcı kaydet");
+        plan.append(store);
+    }
+}
+
+void CanOpenPanel::StartBatch(const QVector<BatchItem> &plan, bool upload)
+{
+    m_batch = plan;
+    m_batchUpload = upload;
+    m_batchCancelled = false;
+    m_batchFailures = 0;
+    m_batchConsecutiveTimeouts = 0;
+    m_batchValues.clear();
+    m_batchPosition = 0;
+    m_batchProgress->setRange(0, static_cast<int>(m_batch.size()));
+    m_batchProgress->setValue(0);
+    m_batchProgress->setFormat(QStringLiteral("%v / %m"));
+    m_batchProgress->setVisible(true);
+    m_cancelBatchButton->setVisible(true);
+    m_batchStatusLabel->setText(upload ? tr("Okunuyor...") : tr("Yazılıyor..."));
+    UpdateButtonStates();
+    QTimer::singleShot(0, this, &CanOpenPanel::StartNextBatchItem);
+}
+
+void CanOpenPanel::StartNextBatchItem()
+{
+    if (!IsBatchActive()) {
+        return;
+    }
+    if (m_batchPosition >= m_batch.size()) {
+        FinishBatch(false, QString());
+        return;
+    }
+    m_batchProgress->setValue(m_batchPosition);
+
+    const BatchItem &item = m_batch.at(m_batchPosition);
+    const quint8 nodeId = static_cast<quint8>(m_nodeIdSpin->value());
+    QString errorText;
+    const bool started = item.write ? m_sdoClient->StartDownload(nodeId, item.index, item.subIndex, item.data, errorText)
+                                    : m_sdoClient->StartUpload(nodeId, item.index, item.subIndex, errorText);
+    if (!started) {
+        AdvanceBatch(false, errorText);
+    }
+}
+
+void CanOpenPanel::AdvanceBatch(bool success, const QString &reason)
+{
+    if (!IsBatchActive()) {
+        return;
+    }
+    const BatchItem &item = m_batch.at(m_batchPosition);
+    if (m_batchCancelled || !m_connected) {
+        FinishBatch(true, m_batchCancelled ? tr("kullanıcı iptal etti") : tr("bağlantı kesildi"));
+        return;
+    }
+
+    if (success) {
+        m_batchConsecutiveTimeouts = 0;
+        if (item.write) {
+            AppendLog(tr("✓ %1%2").arg(AddressText(item.index, item.subIndex),
+                                       item.note.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(item.note)));
+        }
+    } else {
+        ++m_batchFailures;
+        AppendLog(tr("✗ %1%2 — %3")
+                      .arg(AddressText(item.index, item.subIndex),
+                           item.note.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(item.note), reason));
+        // Art arda zaman aşımı: düğüm yanıt vermiyor, kalan adımları denemenin anlamı yok.
+        if (reason == CanOpen::SdoAbortCodeText(0x05040000)) {
+            if (++m_batchConsecutiveTimeouts >= 3) {
+                FinishBatch(true, tr("düğüm yanıt vermiyor (art arda 3 zaman aşımı)"));
+                return;
+            }
+        } else {
+            m_batchConsecutiveTimeouts = 0;
+        }
+    }
+    ++m_batchPosition;
+    QTimer::singleShot(0, this, &CanOpenPanel::StartNextBatchItem);
+}
+
+void CanOpenPanel::FinishBatch(bool aborted, const QString &reason)
+{
+    const int total = static_cast<int>(m_batch.size());
+    const int done = qMin(m_batchPosition, total);
+    const bool upload = m_batchUpload;
+    m_batchPosition = -1;
+    m_batch.clear();
+    m_batchProgress->setVisible(false);
+    m_cancelBatchButton->setVisible(false);
+
+    QString summary;
+    if (aborted) {
+        summary = tr("Yarıda kaldı (%1): %2 / %3 adım, %4 hata.").arg(reason).arg(done).arg(total).arg(m_batchFailures);
+        if (upload) {
+            summary += QLatin1Char(' ') + tr("DCF dosyası yazılmadı.");
+        }
+    } else if (upload) {
+        QString errorText;
+        if (m_batchValues.isEmpty()) {
+            summary = tr("Hiçbir değer okunamadı; DCF dosyası yazılmadı.");
+        } else if (DcfWriter::WriteDcf(m_dictionary.FilePath(), m_batchTargetPath, m_batchValues,
+                                       static_cast<quint8>(m_nodeIdSpin->value()), errorText)) {
+            summary = tr("%1 değer okundu, %2 hata. Kaydedildi: %3")
+                          .arg(m_batchValues.size())
+                          .arg(m_batchFailures)
+                          .arg(QDir::toNativeSeparators(m_batchTargetPath));
+            QSettings settings;
+            settings.setValue(QStringLiteral("canopen/lastDcfDir"), QFileInfo(m_batchTargetPath).absolutePath());
+            settings.setValue(QStringLiteral("canopen/lastDcfFile"), m_batchTargetPath);
+        } else {
+            summary = tr("DCF yazılamadı: %1").arg(errorText);
+        }
+    } else {
+        summary = tr("Yazma tamamlandı: %1 adım, %2 hata.").arg(total).arg(m_batchFailures);
+    }
+    AppendLog(tr("Parametre seti: %1").arg(summary));
+    m_batchStatusLabel->setText(summary);
+    UpdateButtonStates();
+}
+
+void CanOpenPanel::CancelBatch()
+{
+    if (!IsBatchActive()) {
+        return;
+    }
+    m_batchCancelled = true;
+    if (m_sdoClient->IsBusy()) {
+        m_sdoClient->Cancel(); // TransferFailed → AdvanceBatch → FinishBatch
+    } else {
+        FinishBatch(true, tr("kullanıcı iptal etti"));
+    }
 }

@@ -53,7 +53,7 @@ bool MessageFilter::Accepts(const CanFrame &frame) const
         if (!rule.enabled) {
             continue;
         }
-        const bool matches = RuleMatches(rule, frame.id);
+        const bool matches = RuleMatches(rule, frame);
         if (rule.include) {
             hasIncludeRule = true;
             included = included || matches;
@@ -64,9 +64,18 @@ bool MessageFilter::Accepts(const CanFrame &frame) const
     return !hasIncludeRule || included;
 }
 
-bool MessageFilter::RuleMatches(const FilterRule &rule, quint32 id)
+bool MessageFilter::RuleMatches(const FilterRule &rule, const CanFrame &frame)
 {
+    const quint32 id = frame.id;
     switch (rule.mode) {
+    case FilterMode::Bit: {
+        const int byteIndex = rule.bitPosition / 8;
+        if (id != rule.first || frame.rtr || byteIndex >= frame.dlc || byteIndex >= MaxCanFdDataLength) {
+            return false;
+        }
+        const bool bit = (frame.data[static_cast<size_t>(byteIndex)] >> (rule.bitPosition % 8)) & 0x01;
+        return bit == rule.bitValue;
+    }
     case FilterMode::SingleId:
         return id == rule.first;
     case FilterMode::IdRange:
@@ -88,6 +97,12 @@ QString MessageFilter::DescribeRule(const FilterRule &rule)
         return QStringLiteral("%1..%2").arg(first, second);
     case FilterMode::Mask:
         return QCoreApplication::translate("MessageFilter", "%1 / maske %2").arg(first, second);
+    case FilterMode::Bit:
+        return QCoreApplication::translate("MessageFilter", "%1 · bayt %2 bit %3 = %4")
+            .arg(first)
+            .arg(rule.bitPosition / 8)
+            .arg(rule.bitPosition % 8)
+            .arg(rule.bitValue ? 1 : 0);
     }
     return QString();
 }
@@ -101,6 +116,8 @@ QString MessageFilter::ModeName(FilterMode mode)
         return QCoreApplication::translate("MessageFilter", "Aralık");
     case FilterMode::Mask:
         return QCoreApplication::translate("MessageFilter", "Maske");
+    case FilterMode::Bit:
+        return QCoreApplication::translate("MessageFilter", "Bit");
     }
     return QString();
 }

@@ -66,6 +66,17 @@ QFont MonospaceFont();
 QIcon CreateAppIcon();
 
 /**
+ * @brief Kaynaklardaki çizgi ikonunu (":/icons/<ad>.svg") tema rengiyle boyayıp döndürür.
+ *
+ * İkonlar önbelleğe alınır; tema değişince önbellek temizlenir, bu yüzden
+ * tema değişiminden sonra ikonlar yeniden atanmalıdır.
+ * @param name İkon adı (ör. "copy", "delete", "send").
+ * @param color Çizgi rengi; geçersizse ikincil metin rengi kullanılır.
+ * @return İkon; dosya bulunamazsa boş ikon.
+ */
+QIcon Icon(const QString &name, const QColor &color = QColor());
+
+/**
  * @brief Dinamik bir özellik değiştiğinde widget'ın stilini yeniden hesaplatır.
  * @param widget Stili yenilenecek widget; nullptr ise bir şey yapılmaz.
  */

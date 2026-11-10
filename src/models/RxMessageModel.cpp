@@ -1,5 +1,7 @@
 #include "RxMessageModel.h"
 
+#include <algorithm>
+#include <functional>
 #include <utility>
 
 namespace {
@@ -38,12 +40,10 @@ QVariant RxMessageModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole) {
         switch (index.column()) {
-        case ColumnId: return FormatCanId(frame.id, frame.extended);
-        case ColumnType:
-            return QStringLiteral("%1%2").arg(frame.extended ? QStringLiteral("Ext") : QStringLiteral("Std"),
-                                              frame.rtr ? QStringLiteral(" RTR") : QString());
+        case ColumnId: return FormatCanId(frame.id, frame.extended, m_idFormat);
+        case ColumnType: return FormatFrameType(frame);
         case ColumnDlc: return frame.dlc;
-        case ColumnData: return FormatFrameData(frame);
+        case ColumnData: return FormatFrameData(frame, m_dataFormat);
         case ColumnCycle:
             return entry.cycleUs < 0 ? QString() : QString::number(static_cast<double>(entry.cycleUs) / 1000.0, 'f', 1);
         case ColumnCount: return entry.count;
@@ -84,10 +84,12 @@ QVariant RxMessageModel::headerData(int section, Qt::Orientation orientation, in
         return QAbstractTableModel::headerData(section, orientation, role);
     }
     switch (section) {
-    case ColumnId: return tr("ID (hex)");
+    case ColumnId: return m_idFormat == IdFormat::Hex ? tr("ID (hex)") : tr("ID (dec)");
     case ColumnType: return tr("Tip");
     case ColumnDlc: return tr("DLC");
-    case ColumnData: return tr("Veri");
+    case ColumnData:
+        return m_dataFormat == DataFormat::Hex ? tr("Veri (hex)")
+               : m_dataFormat == DataFormat::Decimal ? tr("Veri (dec)") : tr("Veri (ASCII)");
     case ColumnCycle: return tr("Periyot (ms)");
     case ColumnCount: return tr("Sayaç");
     case ColumnTime: return tr("Zaman (s)");
@@ -183,10 +185,10 @@ void RxMessageModel::SetHighlightColor(const QColor &color)
 
 bool RxMessageModel::SameData(const CanFrame &first, const CanFrame &second)
 {
-    if (first.dlc != second.dlc || first.rtr != second.rtr) {
+    if (first.dlc != second.dlc || first.rtr != second.rtr || first.fd != second.fd) {
         return false;
     }
-    for (int i = 0; i < qMin<int>(first.dlc, 8); ++i) {
+    for (int i = 0; i < qMin<int>(first.dlc, MaxCanFdDataLength); ++i) {
         if (first.data[static_cast<size_t>(i)] != second.data[static_cast<size_t>(i)]) {
             return false;
         }
@@ -204,6 +206,39 @@ void RxMessageModel::RefreshHighlights()
 
 quint32 RxMessageModel::MakeKey(const CanFrame &frame)
 {
-    // 29 bit ID'de 31. bit boştur; extended bilgisini orada taşı, RTR'yi 30. bitte.
-    return frame.id | (frame.extended ? 0x80000000u : 0u) | (frame.rtr ? 0x40000000u : 0u);
+    // 29 bit ID'de 31..29. bitler boştur; extended, RTR ve FD bilgisini orada taşı.
+    return frame.id | (frame.extended ? 0x80000000u : 0u) | (frame.rtr ? 0x40000000u : 0u)
+           | (frame.fd ? 0x20000000u : 0u);
+}
+
+void RxMessageModel::RemoveRows(QList<int> rows)
+{
+    if (rows.isEmpty()) {
+        return;
+    }
+    std::sort(rows.begin(), rows.end(), std::greater<int>());
+    rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+    for (const int row : std::as_const(rows)) {
+        if (row < 0 || row >= m_entries.size()) {
+            continue;
+        }
+        beginRemoveRows(QModelIndex(), row, row);
+        m_entries.removeAt(row);
+        endRemoveRows();
+    }
+    // Satır numaraları kaydığı için anahtar tablosunu yeniden kur.
+    m_rowByKey.clear();
+    for (int row = 0; row < m_entries.size(); ++row) {
+        m_rowByKey.insert(MakeKey(m_entries.at(row).frame), row);
+    }
+}
+
+void RxMessageModel::SetDisplayFormat(IdFormat idFormat, DataFormat dataFormat)
+{
+    m_idFormat = idFormat;
+    m_dataFormat = dataFormat;
+    emit headerDataChanged(Qt::Horizontal, 0, ColumnTotal - 1);
+    if (!m_entries.isEmpty()) {
+        emit dataChanged(index(0, 0), index(static_cast<int>(m_entries.size()) - 1, ColumnTotal - 1));
+    }
 }
