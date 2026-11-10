@@ -33,15 +33,18 @@ public:
 private:
     using IniSection = QHash<QString, QString>;
     using IniDocument = QHash<QString, IniSection>;
+    using OrderedSections = QHash<QString, ObjectDictionary::InfoEntries>;
 
     /**
      * @brief INI dosyasını bölüm -> (anahtar -> değer) yapısına okur.
      * @param filePath Dosya yolu.
      * @param document Okunan içerik; bölüm ve anahtar adları küçük harfe çevrilir.
+     * @param orderedSections Aynı içerik; dosyadaki sıra ve orijinal anahtar yazımıyla (bölüm adı küçük harf).
      * @param errorText Dosya açılamazsa açıklama.
      * @return Dosya okunduysa true.
      */
-    static bool ReadIniDocument(const QString &filePath, IniDocument &document, QString &errorText);
+    static bool ReadIniDocument(const QString &filePath, IniDocument &document, OrderedSections &orderedSections,
+                                QString &errorText);
 
     /**
      * @brief Bir nesne/alt nesne bölümünden OdEntry oluşturur.

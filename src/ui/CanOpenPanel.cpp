@@ -2,6 +2,7 @@
 
 #include "../canopen/SdoClient.h"
 #include "../eds/EdsParser.h"
+#include "Theme.h"
 
 #include <QComboBox>
 #include <QDateTime>
@@ -18,6 +19,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSortFilterProxyModel>
 #include <QSpinBox>
 #include <QSplitter>
 #include <QStandardItemModel>
@@ -82,29 +84,53 @@ void CanOpenPanel::SetSendFunction(SendFunction function)
 
 void CanOpenPanel::BuildUi()
 {
-    const QFont fixedFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    const QFont fixedFont = Theme::MonospaceFont();
 
     // --- Sol: EDS ağacı ---
+    auto *titleLabel = new QLabel(tr("Nesne sözlüğü"), this);
+    titleLabel->setObjectName(QStringLiteral("SectionTitle"));
     auto *openButton = new QPushButton(tr("EDS Aç..."), this);
+    openButton->setProperty("primary", true);
     connect(openButton, &QPushButton::clicked, this, &CanOpenPanel::BrowseEdsFile);
     m_fileLabel = new QLabel(tr("EDS dosyası yüklenmedi."), this);
+    m_fileLabel->setObjectName(QStringLiteral("MutedText"));
     m_fileLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    auto *fileRow = new QHBoxLayout;
-    fileRow->addWidget(openButton);
-    fileRow->addWidget(m_fileLabel, 1);
+    auto *titleRow = new QHBoxLayout;
+    titleRow->addWidget(titleLabel);
+    titleRow->addSpacing(8);
+    titleRow->addWidget(m_fileLabel, 1);
+    titleRow->addWidget(openButton);
+
+    m_searchEdit = new QLineEdit(this);
+    m_searchEdit->setPlaceholderText(tr("Ara: index (ör. 1018) veya ad (ör. Statusword)"));
+    m_searchEdit->setClearButtonEnabled(true);
+    connect(m_searchEdit, &QLineEdit::textChanged, this, &CanOpenPanel::ApplySearch);
 
     m_treeModel = new QStandardItemModel(0, TreeColumnTotal, this);
     m_treeModel->setHorizontalHeaderLabels(
         {tr("Index"), tr("Ad"), tr("Veri tipi"), tr("Erişim"), tr("Varsayılan"), tr("PDO"), tr("Okunan değer")});
 
+    m_treeProxy = new QSortFilterProxyModel(this);
+    m_treeProxy->setSourceModel(m_treeModel);
+    m_treeProxy->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    m_treeProxy->setFilterKeyColumn(-1);
+    m_treeProxy->setRecursiveFilteringEnabled(true);
+    m_treeProxy->setAutoAcceptChildRows(true);
+
     m_treeView = new QTreeView(this);
-    m_treeView->setModel(m_treeModel);
+    m_treeView->setModel(m_treeProxy);
     m_treeView->setUniformRowHeights(true);
     m_treeView->setAlternatingRowColors(true);
+    m_treeView->setAnimated(true);
     m_treeView->header()->setSectionResizeMode(QHeaderView::Interactive);
-    m_treeView->setColumnWidth(TreeColumnIndex, 110);
-    m_treeView->setColumnWidth(TreeColumnName, 240);
+    m_treeView->header()->setStretchLastSection(true);
+    m_treeView->setColumnWidth(TreeColumnIndex, 190);
+    m_treeView->setColumnWidth(TreeColumnName, 260);
+    m_treeView->setColumnWidth(TreeColumnType, 120);
+    m_treeView->setColumnWidth(TreeColumnAccess, 70);
+    m_treeView->setColumnWidth(TreeColumnDefault, 130);
+    m_treeView->setColumnWidth(TreeColumnPdo, 50);
     connect(m_treeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
             [this](const QModelIndex &current, const QModelIndex &) { HandleTreeSelection(current); });
     connect(m_treeView, &QTreeView::doubleClicked, this, [this](const QModelIndex &index) {
@@ -117,7 +143,9 @@ void CanOpenPanel::BuildUi()
     auto *leftWidget = new QWidget(this);
     auto *leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->addLayout(fileRow);
+    leftLayout->setSpacing(8);
+    leftLayout->addLayout(titleRow);
+    leftLayout->addWidget(m_searchEdit);
     leftLayout->addWidget(m_treeView, 1);
 
     // --- Sağ: düğüm, SDO, NMT, günlük ---
@@ -154,6 +182,7 @@ void CanOpenPanel::BuildUi()
     m_valueEdit->setFont(fixedFont);
 
     m_readButton = new QPushButton(tr("Oku (Upload)"), this);
+    m_readButton->setProperty("primary", true);
     m_writeButton = new QPushButton(tr("Yaz (Download)"), this);
     connect(m_readButton, &QPushButton::clicked, this, &CanOpenPanel::ReadSelectedObject);
     connect(m_writeButton, &QPushButton::clicked, this, &CanOpenPanel::WriteSelectedObject);
@@ -215,26 +244,34 @@ void CanOpenPanel::BuildUi()
     m_log->setReadOnly(true);
     m_log->setFont(fixedFont);
     m_log->setMaximumBlockCount(2000);
-    auto *clearLogButton = new QPushButton(tr("Günlüğü temizle"), this);
+    auto *clearLogButton = new QPushButton(tr("Temizle"), this);
     connect(clearLogButton, &QPushButton::clicked, m_log, &QPlainTextEdit::clear);
 
     auto *rightWidget = new QWidget(this);
     auto *rightLayout = new QVBoxLayout(rightWidget);
     rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setSpacing(8);
     rightLayout->addWidget(nodeGroup);
     rightLayout->addWidget(sdoGroup);
     rightLayout->addWidget(nmtGroup);
-    rightLayout->addWidget(new QLabel(tr("Günlük:"), this));
+    auto *logTitle = new QLabel(tr("Günlük"), this);
+    logTitle->setObjectName(QStringLiteral("SectionTitle"));
+    auto *logHeader = new QHBoxLayout;
+    logHeader->addWidget(logTitle);
+    logHeader->addStretch(1);
+    logHeader->addWidget(clearLogButton);
+    rightLayout->addLayout(logHeader);
     rightLayout->addWidget(m_log, 1);
-    rightLayout->addWidget(clearLogButton, 0, Qt::AlignRight);
 
     auto *splitter = new QSplitter(Qt::Horizontal, this);
+    splitter->setHandleWidth(10);
     splitter->addWidget(leftWidget);
     splitter->addWidget(rightWidget);
     splitter->setStretchFactor(0, 3);
     splitter->setStretchFactor(1, 2);
 
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(14, 12, 14, 12);
     layout->addWidget(splitter);
 }
 
@@ -310,10 +347,122 @@ void CanOpenPanel::SetConnected(bool connected)
     UpdateButtonStates();
 }
 
+void CanOpenPanel::ApplyThemeColors()
+{
+    const QColor accent = Theme::Colors().accent;
+    for (const auto &group : std::as_const(m_groupItems)) {
+        group.first->setForeground(accent);
+    }
+}
+
+void CanOpenPanel::ApplyGroupSpans()
+{
+    for (const auto &group : std::as_const(m_groupItems)) {
+        const QModelIndex proxyIndex = m_treeProxy->mapFromSource(group.first->index());
+        if (proxyIndex.isValid()) {
+            m_treeView->setFirstColumnSpanned(proxyIndex.row(), proxyIndex.parent(), true);
+        }
+    }
+}
+
+void CanOpenPanel::RestoreDefaultExpansion()
+{
+    for (const auto &group : std::as_const(m_groupItems)) {
+        m_treeView->setExpanded(m_treeProxy->mapFromSource(group.first->index()), group.second);
+    }
+}
+
+void CanOpenPanel::ApplySearch(const QString &text)
+{
+    m_treeProxy->setFilterFixedString(text.trimmed());
+    ApplyGroupSpans();
+    if (text.trimmed().isEmpty()) {
+        m_treeView->collapseAll();
+        RestoreDefaultExpansion();
+    } else {
+        m_treeView->expandAll();
+    }
+}
+
 void CanOpenPanel::PopulateTree()
 {
     m_treeModel->removeRows(0, m_treeModel->rowCount());
     m_valueItems.clear();
+    m_groupItems.clear();
+
+    // CiA 301 index alanlarına göre başlıklar (son başlık, hiçbir alana girmeyenleri de toplar).
+    struct GroupInfo
+    {
+        quint16 first;
+        quint16 last;
+        const char *title;
+        const char *range;
+        bool expanded;
+    };
+    const GroupInfo groups[] = {
+        {0x0001, 0x0FFF, QT_TR_NOOP("Veri tipleri"), "0001–0FFF", false},
+        {0x1000, 0x1FFF, QT_TR_NOOP("Temel — Communication profile"), "1000–1FFF", true},
+        {0x2000, 0x5FFF, QT_TR_NOOP("Vendor specific — Manufacturer"), "2000–5FFF", true},
+        {0x6000, 0x9FFF, QT_TR_NOOP("Device specific — Device profile"), "6000–9FFF", true},
+        {0xA000, 0xFFFF, QT_TR_NOOP("Diğer — Interface profile / reserved"), "A000–FFFF", false},
+    };
+    constexpr int groupCount = static_cast<int>(sizeof(groups) / sizeof(groups[0]));
+
+    QFont groupFont = font();
+    groupFont.setBold(true);
+
+    // Başlık satırı oluşturur; başlık tüm satır genişliğine yayılır (bkz. ApplyGroupSpans).
+    auto makeGroupRow = [this, &groupFont](const QString &title, const QString &detail, bool expanded) {
+        QStandardItem *titleItem = MakeItem(QStringLiteral("%1   ·   %2").arg(title, detail));
+        titleItem->setFont(groupFont);
+        titleItem->setData(false, RoleIsEntry);
+        QList<QStandardItem *> row;
+        row << titleItem;
+        for (int column = TreeColumnName; column < TreeColumnTotal; ++column) {
+            row << MakeItem(QString());
+        }
+        m_groupItems.append(qMakePair(titleItem, expanded));
+        return row;
+    };
+
+    // Bilgi bölümünü (anahtar, değer) alt satırları olarak ekler.
+    auto appendInfoSection = [](QStandardItem *parent, const QString &name, const ObjectDictionary::InfoEntries &entries) {
+        if (entries.isEmpty()) {
+            return;
+        }
+        QStandardItem *sectionItem = MakeItem(name);
+        sectionItem->setData(false, RoleIsEntry);
+        QList<QStandardItem *> sectionRow;
+        sectionRow << sectionItem << MakeItem(QString());
+        parent->appendRow(sectionRow);
+        for (const auto &pair : entries) {
+            QStandardItem *keyItem = MakeItem(pair.first);
+            keyItem->setData(false, RoleIsEntry);
+            sectionItem->appendRow({keyItem, MakeItem(pair.second)});
+        }
+    };
+
+    // --- Dosya ve cihaz bilgisi ---
+    if (!m_dictionary.FileInfoEntries().isEmpty() || !m_dictionary.DeviceInfoEntries().isEmpty()) {
+        QList<QStandardItem *> infoRow = makeGroupRow(tr("Dosya ve cihaz bilgisi"), QStringLiteral("[FileInfo] / [DeviceInfo]"), false);
+        appendInfoSection(infoRow.first(), QStringLiteral("FileInfo"), m_dictionary.FileInfoEntries());
+        appendInfoSection(infoRow.first(), QStringLiteral("DeviceInfo"), m_dictionary.DeviceInfoEntries());
+        m_treeModel->appendRow(infoRow);
+    }
+
+    // Nesneleri başlıklara dağıt.
+    QVector<QList<const OdObject *>> grouped(groupCount);
+    const QMap<quint16, OdObject> &allObjects = m_dictionary.Objects();
+    for (auto it = allObjects.constBegin(); it != allObjects.constEnd(); ++it) {
+        int target = groupCount - 1;
+        for (int g = 0; g < groupCount; ++g) {
+            if (it.key() >= groups[g].first && it.key() <= groups[g].last) {
+                target = g;
+                break;
+            }
+        }
+        grouped[target].append(&it.value());
+    }
 
     // Tek bir girdi için satır hücrelerini oluşturur.
     auto makeEntryRow = [this](const OdEntry &entry, const QString &indexText, const QString &name) {
@@ -329,32 +478,49 @@ void CanOpenPanel::PopulateTree()
         return row;
     };
 
-    const QMap<quint16, OdObject> &objects = m_dictionary.Objects();
-    for (auto it = objects.constBegin(); it != objects.constEnd(); ++it) {
-        const OdObject &object = it.value();
-        const QString indexText = QStringLiteral("0x%1").arg(QStringLiteral("%1").arg(object.index, 4, 16, QLatin1Char('0')).toUpper());
-
-        const bool isComplex = object.objectType == CanOpenObjectType::Array
-                               || object.objectType == CanOpenObjectType::Record;
-        if (!isComplex && object.entries.size() == 1) {
-            m_treeModel->appendRow(makeEntryRow(object.entries.first(), indexText, object.name));
+    for (int g = 0; g < groupCount; ++g) {
+        const QList<const OdObject *> &objects = grouped.at(g);
+        if (objects.isEmpty()) {
             continue;
         }
+        QList<QStandardItem *> groupRow =
+            makeGroupRow(tr(groups[g].title),
+                         tr("%1 · %2 nesne").arg(QString::fromUtf8(groups[g].range)).arg(objects.size()),
+                         groups[g].expanded);
+        QStandardItem *groupItem = groupRow.first();
 
-        QList<QStandardItem *> parentRow;
-        QStandardItem *parentItem = MakeItem(indexText);
-        parentItem->setData(object.index, RoleIndex);
-        parentItem->setData(false, RoleIsEntry);
-        parentRow << parentItem << MakeItem(object.name) << MakeItem(ObjectTypeName(object.objectType));
-        for (int column = TreeColumnAccess; column < TreeColumnTotal; ++column) {
-            parentRow << MakeItem(QString());
-        }
+        for (const OdObject *object : objects) {
+            const QString indexText =
+                QStringLiteral("0x%1").arg(QStringLiteral("%1").arg(object->index, 4, 16, QLatin1Char('0')).toUpper());
 
-        for (const OdEntry &entry : object.entries) {
-            parentItem->appendRow(makeEntryRow(entry, AddressText(entry.index, entry.subIndex), entry.name));
+            const bool isComplex = object->objectType == CanOpenObjectType::Array
+                                   || object->objectType == CanOpenObjectType::Record;
+            if (!isComplex && object->entries.size() == 1) {
+                groupItem->appendRow(makeEntryRow(object->entries.first(), indexText, object->name));
+                continue;
+            }
+
+            QList<QStandardItem *> parentRow;
+            QStandardItem *parentItem = MakeItem(indexText);
+            parentItem->setData(object->index, RoleIndex);
+            parentItem->setData(false, RoleIsEntry);
+            parentRow << parentItem << MakeItem(object->name) << MakeItem(ObjectTypeName(object->objectType));
+            for (int column = TreeColumnAccess; column < TreeColumnTotal; ++column) {
+                parentRow << MakeItem(QString());
+            }
+            for (const OdEntry &entry : object->entries) {
+                parentItem->appendRow(makeEntryRow(entry, AddressText(entry.index, entry.subIndex), entry.name));
+            }
+            groupItem->appendRow(parentRow);
         }
-        m_treeModel->appendRow(parentRow);
+        m_treeModel->appendRow(groupRow);
     }
+
+    ApplyThemeColors();
+    m_searchEdit->clear();
+    ApplyGroupSpans();
+    m_treeView->collapseAll();
+    RestoreDefaultExpansion();
 }
 
 void CanOpenPanel::HandleTreeSelection(const QModelIndex &current)

@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QMap>
+#include <QPair>
 #include <QString>
 #include <QVector>
 
@@ -79,6 +80,9 @@ struct OdObject
 class ObjectDictionary
 {
 public:
+    /// Bir bilgi bölümünün (anahtar, değer) satırları; dosyadaki sıra ve yazımla.
+    using InfoEntries = QVector<QPair<QString, QString>>;
+
     /// Tüm nesneleri ve bilgi bölümlerini temizler.
     void Clear();
 
@@ -115,6 +119,18 @@ public:
     /// [FileInfo] içinden bir değeri döndürür (ör. "filename").
     QString FileInfoValue(const QString &key) const;
 
+    /// [FileInfo] satırlarını dosyadaki sıra ve yazımla ayarlar (görüntüleme için).
+    void SetFileInfoEntries(const InfoEntries &entries);
+
+    /// [FileInfo] satırlarını dosyadaki sıra ve yazımla döndürür.
+    const InfoEntries &FileInfoEntries() const;
+
+    /// [DeviceInfo] satırlarını dosyadaki sıra ve yazımla ayarlar (görüntüleme için).
+    void SetDeviceInfoEntries(const InfoEntries &entries);
+
+    /// [DeviceInfo] satırlarını dosyadaki sıra ve yazımla döndürür.
+    const InfoEntries &DeviceInfoEntries() const;
+
     /// Sözlüğün yüklendiği dosya yolunu ayarlar.
     void SetFilePath(const QString &filePath);
 
@@ -125,6 +141,8 @@ private:
     QMap<quint16, OdObject> m_objects;
     QHash<QString, QString> m_fileInfo;
     QHash<QString, QString> m_deviceInfo;
+    InfoEntries m_fileInfoEntries;
+    InfoEntries m_deviceInfoEntries;
     QString m_filePath;
 };
 

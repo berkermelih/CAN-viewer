@@ -43,6 +43,8 @@ void ObjectDictionary::Clear()
     m_objects.clear();
     m_fileInfo.clear();
     m_deviceInfo.clear();
+    m_fileInfoEntries.clear();
+    m_deviceInfoEntries.clear();
     m_filePath.clear();
 }
 
@@ -99,6 +101,26 @@ QString ObjectDictionary::DeviceInfoValue(const QString &key) const
 QString ObjectDictionary::FileInfoValue(const QString &key) const
 {
     return m_fileInfo.value(key.toLower());
+}
+
+void ObjectDictionary::SetFileInfoEntries(const InfoEntries &entries)
+{
+    m_fileInfoEntries = entries;
+}
+
+const ObjectDictionary::InfoEntries &ObjectDictionary::FileInfoEntries() const
+{
+    return m_fileInfoEntries;
+}
+
+void ObjectDictionary::SetDeviceInfoEntries(const InfoEntries &entries)
+{
+    m_deviceInfoEntries = entries;
+}
+
+const ObjectDictionary::InfoEntries &ObjectDictionary::DeviceInfoEntries() const
+{
+    return m_deviceInfoEntries;
 }
 
 void ObjectDictionary::SetFilePath(const QString &filePath)

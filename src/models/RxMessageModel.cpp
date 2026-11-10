@@ -2,9 +2,20 @@
 
 #include <utility>
 
+namespace {
+
+// Veri değişikliğinin vurgulanacağı süre (ms).
+constexpr qint64 HighlightDurationMs = 600;
+
+} // namespace
+
 RxMessageModel::RxMessageModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
+    m_clock.start();
+    m_highlightTimer.setInterval(250);
+    connect(&m_highlightTimer, &QTimer::timeout, this, &RxMessageModel::RefreshHighlights);
+    m_highlightTimer.start();
 }
 
 int RxMessageModel::rowCount(const QModelIndex &parent) const
@@ -48,6 +59,10 @@ QVariant RxMessageModel::data(const QModelIndex &index, int role) const
         case ColumnCount: return entry.count;
         case ColumnTime: return frame.timestampUs;
         default: return data(index, Qt::DisplayRole);
+        }
+    } else if (role == Qt::ForegroundRole && index.column() == ColumnData && m_highlightColor.isValid()) {
+        if (entry.dataChangedMs >= 0 && m_clock.elapsed() - entry.dataChangedMs < HighlightDurationMs) {
+            return m_highlightColor;
         }
     } else if (role == Qt::TextAlignmentRole) {
         switch (index.column()) {
@@ -108,6 +123,9 @@ void RxMessageModel::AddFrames(const QVector<CanFrame> &frames)
         const int row = it.value();
         Entry &entry = m_entries[row];
         entry.cycleUs = frame.timestampUs - entry.frame.timestampUs;
+        if (!SameData(entry.frame, frame)) {
+            entry.dataChangedMs = m_clock.elapsed();
+        }
         entry.frame = frame;
         ++entry.count;
         if (m_interpreter) {
@@ -150,6 +168,38 @@ void RxMessageModel::RefreshInterpretations()
 const CanFrame &RxMessageModel::FrameAt(int row) const
 {
     return m_entries.at(row).frame;
+}
+
+const CanFrame *RxMessageModel::FramePointerAt(int row) const
+{
+    return (row >= 0 && row < m_entries.size()) ? &m_entries.at(row).frame : nullptr;
+}
+
+void RxMessageModel::SetHighlightColor(const QColor &color)
+{
+    m_highlightColor = color;
+    RefreshHighlights();
+}
+
+bool RxMessageModel::SameData(const CanFrame &first, const CanFrame &second)
+{
+    if (first.dlc != second.dlc || first.rtr != second.rtr) {
+        return false;
+    }
+    for (int i = 0; i < qMin<int>(first.dlc, 8); ++i) {
+        if (first.data[static_cast<size_t>(i)] != second.data[static_cast<size_t>(i)]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void RxMessageModel::RefreshHighlights()
+{
+    if (!m_entries.isEmpty()) {
+        emit dataChanged(index(0, ColumnData), index(static_cast<int>(m_entries.size()) - 1, ColumnData),
+                         {Qt::ForegroundRole});
+    }
 }
 
 quint32 RxMessageModel::MakeKey(const CanFrame &frame)

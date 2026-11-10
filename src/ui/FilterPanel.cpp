@@ -54,6 +54,8 @@ void FilterPanel::BuildUi()
     m_table->verticalHeader()->setVisible(false);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_table->setShowGrid(false);
+    m_table->setAlternatingRowColors(true);
     connect(m_table, &QTableWidget::itemChanged, this, &FilterPanel::HandleItemChanged);
 
     m_modeCombo = new QComboBox(this);
@@ -70,7 +72,7 @@ void FilterPanel::BuildUi()
     m_secondEdit = new QLineEdit(this);
     m_secondLabel = new QLabel(this);
     m_errorLabel = new QLabel(this);
-    m_errorLabel->setStyleSheet(QStringLiteral("color: #c62828;"));
+    m_errorLabel->setObjectName(QStringLiteral("ErrorText"));
     m_errorLabel->setWordWrap(true);
     connect(m_firstEdit, &QLineEdit::returnPressed, this, &FilterPanel::AddRuleFromInputs);
     connect(m_secondEdit, &QLineEdit::returnPressed, this, &FilterPanel::AddRuleFromInputs);
@@ -82,6 +84,7 @@ void FilterPanel::BuildUi()
     form->addRow(m_secondLabel, m_secondEdit);
 
     auto *addButton = new QPushButton(tr("Ekle"), this);
+    addButton->setProperty("primary", true);
     auto *removeButton = new QPushButton(tr("Sil"), this);
     auto *clearButton = new QPushButton(tr("Temizle"), this);
     connect(addButton, &QPushButton::clicked, this, &FilterPanel::AddRuleFromInputs);
@@ -97,9 +100,11 @@ void FilterPanel::BuildUi()
                                "yalnızca eşleşen ID'ler gösterilir."),
                             this);
     hint->setWordWrap(true);
-    hint->setStyleSheet(QStringLiteral("color: palette(mid);"));
+    hint->setObjectName(QStringLiteral("MutedText"));
 
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setSpacing(8);
     layout->addWidget(m_enabledCheck);
     layout->addWidget(m_table, 1);
     layout->addLayout(form);

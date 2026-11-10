@@ -38,8 +38,10 @@ set(PROJECT_SOURCES
         src/canopen/SdoClient.cpp
         src/models/RxMessageModel.h
         src/models/RxMessageModel.cpp
-        src/models/RxFilterProxyModel.h
-        src/models/RxFilterProxyModel.cpp
+        src/models/FrameFilterProxyModel.h
+        src/models/FrameFilterProxyModel.cpp
+        src/models/TraceModel.h
+        src/models/TraceModel.cpp
         src/models/TxMessageModel.h
         src/models/TxMessageModel.cpp
         src/ui/TxMessageDialog.h
@@ -48,6 +50,9 @@ set(PROJECT_SOURCES
         src/ui/FilterPanel.cpp
         src/ui/CanOpenPanel.h
         src/ui/CanOpenPanel.cpp
+        src/ui/Theme.h
+        src/ui/Theme.cpp
+        resources/resources.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

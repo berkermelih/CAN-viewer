@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QSpinBox>
 #include <QVBoxLayout>
 
@@ -28,7 +29,7 @@ TxMessageDialog::TxMessageDialog(QWidget *parent)
     m_periodSpin->setSpecialValueText(tr("Elle (periyodik değil)"));
     m_commentEdit = new QLineEdit(this);
     m_errorLabel = new QLabel(this);
-    m_errorLabel->setStyleSheet(QStringLiteral("color: #c62828;"));
+    m_errorLabel->setObjectName(QStringLiteral("ErrorText"));
     m_errorLabel->setWordWrap(true);
 
     auto *idRow = new QHBoxLayout;
@@ -44,6 +45,9 @@ TxMessageDialog::TxMessageDialog(QWidget *parent)
     form->addRow(tr("Açıklama:"), m_commentEdit);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    if (QPushButton *okButton = buttons->button(QDialogButtonBox::Ok)) {
+        okButton->setProperty("primary", true);
+    }
     connect(buttons, &QDialogButtonBox::accepted, this, &TxMessageDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &TxMessageDialog::reject);
 

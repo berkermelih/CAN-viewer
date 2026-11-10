@@ -74,8 +74,9 @@ src/
   canopen/    NMT, SDO, PDO, Heartbeat, EMCY — yalnızca CAN frame'leri üzerinde çalışır
   eds/        EDS (INI tabanlı, CiA 306) ayrıştırıcı ve ObjectDictionary modeli
   filter/     ID / aralık / maske / veri filtreleri
-  ui/         MainWindow, mesaj tabloları (Rx/Tx), EDS ağacı, filtre, bağlantı ve gönderim diyalogları
-  models/     QAbstractTableModel / QAbstractItemModel türevleri
+  ui/         Paneller (CanOpenPanel, FilterPanel), diyaloglar ve Theme (renk paleti, QSS)
+  models/     RxMessageModel, TxMessageModel, TraceModel, FrameFilterProxyModel (Rx ve Trace için ortak filtre)
+resources/    Qt kaynakları (resources.qrc; ikonlar)
 docs/         Doxygen yapılandırması ve dokümantasyon (Docker ile üretilecek)
 tests/        Qt Test birim testleri (EDS ayrıştırma, filtreler, SDO kodlama)
 ```
@@ -85,10 +86,17 @@ tests/        Qt Test birim testleri (EDS ayrıştırma, filtreler, SDO kodlama)
 
 ## İşlevsel Kapsam
 
-- Rx tablosu: ID, tip (Std/Ext/RTR), DLC, veri (hex), periyot, sayaç, son zaman.
+- Rx tablosu: ID, tip (Std/Ext/RTR), DLC, veri (hex), periyot, sayaç, son zaman; verisi değişen satırlar kısa süre vurgulanır.
+- Trace: tüm Rx/Tx çerçevelerinin kronolojik kaydı (No, zaman, Δt, yön, ID, veri, CANopen yorumu); duraklat, temizle, isteğe bağlı filtre, CSV dışa aktarma; en fazla 100 000 kayıt. Zaman, Rx ve Tx için ortak uygulama saatidir (donanım zaman damgası değil).
 - Tx tablosu: elle / periyodik mesaj gönderme.
 - Filtreler: tek ID, ID aralığı, maske, dahil et/hariç tut.
-- EDS: dosya açma, nesne ağacı (index/subindex, ad, tip, erişim, varsayılan değer), seçili nesneye SDO okuma/yazma.
+- EDS: dosya açma, nesne ağacı (index/subindex, ad, tip, erişim, varsayılan değer), seçili nesneye SDO okuma/yazma. Ağaç CiA 301 alanlarına göre başlıklara ayrılır: Dosya/cihaz bilgisi, Veri tipleri (0001–0FFF), Temel — Communication (1000–1FFF), Vendor specific (2000–5FFF), Device specific (6000–9FFF), Diğer (A000–FFFF). Index/ad ile arama yapılabilir.
+
+## Arayüz Teması
+
+- Renkler `src/ui/Theme` içindeki tokenlardan gelir (Claude paleti: fildişi zemin, sıcak gri metin, terracotta vurgu `#D97757`); açık ve koyu mod vardır, tercih QSettings'te saklanır.
+- Widget'larda sabit renk/`setStyleSheet` kullanılmaz; bunun yerine stil sayfasındaki roller kullanılır: `objectName` = `SectionTitle`, `MutedText`, `ErrorText`, `CounterBadge`, `BrandLabel`, `PrimaryAction`; birincil düğmeler için `setProperty("primary", true)`.
+- Modellerdeki renkler (ör. vurgu) setter ile verilir; modeller `ui/` katmanına bağımlı olmaz.
 - CANopen: Node ID seçimi, NMT komutları, PDO eşlemelerinin EDS'ten çözülmesi.
 - Mesajlar, adresler ve EDS içeriği için açık doğrulama ve hata gösterimi.
 

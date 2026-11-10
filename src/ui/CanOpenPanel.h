@@ -6,6 +6,8 @@
 #include "../eds/ObjectDictionary.h"
 
 #include <QHash>
+#include <QList>
+#include <QPair>
 #include <QWidget>
 
 #include <functional>
@@ -16,6 +18,7 @@ class QLineEdit;
 class QModelIndex;
 class QPlainTextEdit;
 class QPushButton;
+class QSortFilterProxyModel;
 class QSpinBox;
 class QStandardItem;
 class QStandardItemModel;
@@ -72,6 +75,9 @@ public:
     /// Bağlantı durumuna göre SDO/NMT düğmelerini etkinleştirir.
     void SetConnected(bool connected);
 
+    /// Tema değiştiğinde ağaçtaki başlık renklerini günceller.
+    void ApplyThemeColors();
+
 signals:
     /// EDS veya düğüm numarası değiştiğinde, yani çerçeve yorumları değiştiğinde yayılır.
     void InterpretationChanged();
@@ -80,8 +86,26 @@ private:
     /// Panel bileşenlerini oluşturur ve yerleştirir.
     void BuildUi();
 
-    /// EDS ağacını nesne sözlüğünden yeniden oluşturur.
+    /**
+     * @brief EDS ağacını nesne sözlüğünden yeniden oluşturur.
+     *
+     * Nesneler CiA 301 index alanlarına göre başlıklar altında gruplanır:
+     * dosya/cihaz bilgisi, veri tipleri, temel (communication profile),
+     * vendor specific (manufacturer) ve device specific (device profile).
+     */
     void PopulateTree();
+
+    /// Başlık satırlarını varsayılan açık/kapalı durumlarına getirir.
+    void RestoreDefaultExpansion();
+
+    /// Başlık satırlarının ilk sütununu tüm satır genişliğine yayar (filtreleme sonrası da çağrılır).
+    void ApplyGroupSpans();
+
+    /**
+     * @brief Ağaç arama metnini uygular; eşleşen satırların üst başlıkları açılır.
+     * @param text Index veya ad içinde aranacak metin.
+     */
+    void ApplySearch(const QString &text);
 
     /// Ağaçta seçilen girdinin index/sub/tip bilgisini SDO alanlarına aktarır.
     void HandleTreeSelection(const QModelIndex &current);
@@ -138,7 +162,10 @@ private:
     bool m_connected = false;
 
     QStandardItemModel *m_treeModel = nullptr;
+    QSortFilterProxyModel *m_treeProxy = nullptr;
     QTreeView *m_treeView = nullptr;
+    QLineEdit *m_searchEdit = nullptr;
+    QList<QPair<QStandardItem *, bool>> m_groupItems; ///< Başlık öğesi ve varsayılan açık olma durumu
     QLabel *m_fileLabel = nullptr;
     QSpinBox *m_nodeIdSpin = nullptr;
     QLineEdit *m_indexEdit = nullptr;

@@ -4,7 +4,10 @@
 #include "../can/CanFrame.h"
 
 #include <QAbstractTableModel>
+#include <QColor>
+#include <QElapsedTimer>
 #include <QHash>
+#include <QTimer>
 #include <QVector>
 
 #include <functional>
@@ -83,21 +86,43 @@ public:
      */
     const CanFrame &FrameAt(int row) const;
 
+    /**
+     * @brief Satırdaki çerçeveye işaretçi döndürür.
+     * @return Satır geçersizse nullptr.
+     */
+    const CanFrame *FramePointerAt(int row) const;
+
+    /**
+     * @brief Verisi yeni değişen satırların veri sütununda kullanılacak rengi ayarlar.
+     * @param color Geçersiz renk verilirse vurgu kapatılır.
+     */
+    void SetHighlightColor(const QColor &color);
+
 private:
     struct Entry
     {
         CanFrame frame;
         quint64 count = 0;
         qint64 cycleUs = -1;
+        qint64 dataChangedMs = -1; ///< Veri baytlarının son değiştiği an (m_clock, ms)
         QString interpretation;
     };
 
     /// Çerçeve ID'si ve tipinden satır anahtarı üretir.
     static quint32 MakeKey(const CanFrame &frame);
 
+    /// İki çerçevenin DLC ve veri baytlarının aynı olup olmadığını döndürür.
+    static bool SameData(const CanFrame &first, const CanFrame &second);
+
+    /// Vurgu süresi dolan satırların yeniden çizilmesi için veri sütununu yeniler.
+    void RefreshHighlights();
+
     QVector<Entry> m_entries;
     QHash<quint32, int> m_rowByKey;
     InterpreterFunction m_interpreter;
+    QColor m_highlightColor;
+    QElapsedTimer m_clock;
+    QTimer m_highlightTimer;
 };
 
 #endif // RXMESSAGEMODEL_H

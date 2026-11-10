@@ -22,7 +22,8 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
                                                        QStringList &warnings)
 {
     IniDocument document;
-    if (!ReadIniDocument(filePath, document, errorText)) {
+    OrderedSections orderedSections;
+    if (!ReadIniDocument(filePath, document, orderedSections, errorText)) {
         return std::nullopt;
     }
 
@@ -51,6 +52,8 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
     dictionary.SetFilePath(filePath);
     dictionary.SetFileInfo(document.value(QStringLiteral("fileinfo")));
     dictionary.SetDeviceInfo(document.value(QStringLiteral("deviceinfo")));
+    dictionary.SetFileInfoEntries(orderedSections.value(QStringLiteral("fileinfo")));
+    dictionary.SetDeviceInfoEntries(orderedSections.value(QStringLiteral("deviceinfo")));
 
     for (auto it = objectSections.constBegin(); it != objectSections.constEnd(); ++it) {
         const quint16 index = it.key();
@@ -108,7 +111,8 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
     return dictionary;
 }
 
-bool EdsParser::ReadIniDocument(const QString &filePath, IniDocument &document, QString &errorText)
+bool EdsParser::ReadIniDocument(const QString &filePath, IniDocument &document, OrderedSections &orderedSections,
+                                QString &errorText)
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -141,9 +145,10 @@ bool EdsParser::ReadIniDocument(const QString &filePath, IniDocument &document, 
         if (!hasSection || separator <= 0) {
             continue;
         }
-        const QString key = line.left(separator).trimmed().toLower();
+        const QString originalKey = line.left(separator).trimmed();
         const QString value = line.mid(separator + 1).trimmed();
-        document[currentSection].insert(key, value);
+        document[currentSection].insert(originalKey.toLower(), value);
+        orderedSections[currentSection].append(qMakePair(originalKey, value));
     }
     return true;
 }
