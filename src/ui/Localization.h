@@ -1,15 +1,23 @@
 #ifndef LOCALIZATION_H
 #define LOCALIZATION_H
 
+#include <QString>
 #include <QTranslator>
 
 class QApplication;
+
+/// Uygulamanın arayüz dilleri. Kaynak koddaki metinler Türkçedir; diğer diller çeviri dosyasından gelir.
+enum class AppLanguage
+{
+    Turkish, ///< Varsayılan; kaynak metinler
+    English  ///< translations/canbus_en.ts
+};
 
 /**
  * @brief Qt'nin standart düğme metinlerini (Save, Cancel, Yes, No ...) Türkçeye çeviren çevirmen.
  *
  * Qt'nin kendi Türkçe çevirisi (qtbase_tr.qm) bulunamasa veya eksik olsa da onay
- * pencerelerindeki düğmelerin Türkçe görünmesini garanti eder.
+ * pencerelerindeki düğmelerin Türkçe görünmesini garanti eder. Yalnızca Türkçe dilde kurulur.
  */
 class StandardButtonTranslator : public QTranslator
 {
@@ -24,7 +32,7 @@ public:
 
     /**
      * @brief Standart düğme metni ise Türkçe karşılığını döndürür.
-     * @param context Çeviri bağlamı (kullanılmaz; metinler yalnızca Qt'ye aittir).
+     * @param context Çeviri bağlamı; yalnızca Qt sınıflarının ('Q' ile başlayan) bağlamları çevrilir.
      * @param sourceText İngilizce kaynak metin.
      * @param disambiguation Ayırt edici not (kullanılmaz).
      * @param n Çoğul sayısı (kullanılmaz).
@@ -37,13 +45,29 @@ public:
     bool isEmpty() const override;
 };
 
+/// QSettings'te kayıtlı arayüz dilini döndürür (kayıt yoksa Türkçe).
+AppLanguage SavedLanguage();
+
 /**
- * @brief Uygulamaya Türkçe çevirileri kurar.
- *
- * Varsa Qt'nin qtbase_tr.qm çevirisini (Qt kurulumu veya uygulama klasöründeki
- * translations/) yükler, ardından standart düğmeler için StandardButtonTranslator'ı kurar.
- * @param application Çevirilerin kurulacağı uygulama.
+ * @brief Arayüz dili tercihini kaydeder; bir sonraki açılışta uygulanır.
+ * @param language Yeni dil.
  */
-void InstallTurkishTranslations(QApplication &application);
+void SaveLanguage(AppLanguage language);
+
+/**
+ * @brief Dilin kendi adını döndürür (menüde gösterilir: "Türkçe", "English").
+ * @param language Dil.
+ */
+QString LanguageNativeName(AppLanguage language);
+
+/**
+ * @brief Kayıtlı dile göre çevirileri uygulamaya kurar.
+ *
+ * Türkçe: Qt'nin qtbase_tr.qm çevirisi (varsa) ve StandardButtonTranslator.
+ * İngilizce: uygulamaya gömülü :/i18n/canbus_en.qm (Qt'nin kendi metinleri zaten İngilizcedir).
+ * @param application Çevirilerin kurulacağı uygulama.
+ * @return Kurulan dil (çeviri dosyası yüklenemezse Türkçe).
+ */
+AppLanguage InstallTranslations(QApplication &application);
 
 #endif // LOCALIZATION_H

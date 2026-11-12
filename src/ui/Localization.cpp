@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QLibraryInfo>
 #include <QLocale>
+#include <QSettings>
 
 namespace {
 
@@ -64,21 +65,58 @@ bool StandardButtonTranslator::isEmpty() const
     return false;
 }
 
-void InstallTurkishTranslations(QApplication &application)
+AppLanguage SavedLanguage()
 {
+    const QSettings settings;
+    return settings.value(QStringLiteral("appearance/language")).toString() == QLatin1String("en") ? AppLanguage::English
+                                                                                                  : AppLanguage::Turkish;
+}
+
+void SaveLanguage(AppLanguage language)
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("appearance/language"),
+                      language == AppLanguage::English ? QStringLiteral("en") : QStringLiteral("tr"));
+}
+
+QString LanguageNativeName(AppLanguage language)
+{
+    // Dil adları çevrilmez; her dil kendi adıyla gösterilir.
+    return language == AppLanguage::English ? QStringLiteral("English") : QStringLiteral("Türkçe");
+}
+
+AppLanguage InstallTranslations(QApplication &application)
+{
+    if (SavedLanguage() == AppLanguage::English) {
+        auto *appTranslator = new QTranslator(&application);
+        if (appTranslator->load(QStringLiteral(":/i18n/canbus_en.qm"))) {
+            QCoreApplication::installTranslator(appTranslator);
+            return AppLanguage::English;
+        }
+        delete appTranslator; // çeviri yoksa Türkçe ile devam edilir
+    }
+
     // Varsayılan QLocale değiştirilmez (sayı biçimleri etkilenmesin); yalnızca çeviri dosyası Türkçe seçilir.
     const QLocale turkish(QLocale::Turkish, QLocale::Turkey);
-
+    // Önce dağıtım klasörü (windeployqt: translations/qt_tr.qm), sonra Qt kurulumu (qtbase_tr.qm) denenir.
     auto *qtTranslator = new QTranslator(&application);
-    const QStringList directories = {QLibraryInfo::path(QLibraryInfo::TranslationsPath),
-                                     QCoreApplication::applicationDirPath() + QStringLiteral("/translations")};
+    const QStringList directories = {QCoreApplication::applicationDirPath() + QStringLiteral("/translations"),
+                                     QLibraryInfo::path(QLibraryInfo::TranslationsPath)};
+    const QStringList baseNames = {QStringLiteral("qt"), QStringLiteral("qtbase")};
+    bool loaded = false;
     for (const QString &directory : directories) {
-        if (qtTranslator->load(turkish, QStringLiteral("qtbase"), QStringLiteral("_"), directory)) {
-            QCoreApplication::installTranslator(qtTranslator);
-            break;
+        for (const QString &baseName : baseNames) {
+            if (!loaded && qtTranslator->load(turkish, baseName, QStringLiteral("_"), directory)) {
+                QCoreApplication::installTranslator(qtTranslator);
+                loaded = true;
+            }
         }
+    }
+    if (!loaded) {
+        delete qtTranslator;
     }
 
     // En son kurulan çevirmen önce sorulur: standart düğmeler her durumda Türkçe olur.
     QCoreApplication::installTranslator(new StandardButtonTranslator(&application));
+    return AppLanguage::Turkish;
 }

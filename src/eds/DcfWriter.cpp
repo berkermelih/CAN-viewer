@@ -15,11 +15,6 @@ namespace DcfWriter {
 
 namespace {
 
-// Çeviri bağlamı için kısa yardımcı.
-QString Tr(const char *text)
-{
-    return QCoreApplication::translate("DcfWriter", text);
-}
 
 // Little-endian baytlardan en fazla 8 baytlık işaretsiz değer okur.
 quint64 ReadLittleEndian(const QByteArray &bytes, int size)
@@ -107,7 +102,7 @@ bool WriteDcf(const QString &sourcePath, const QString &targetPath, const QHash<
 {
     QFile source(sourcePath);
     if (!source.open(QIODevice::ReadOnly)) {
-        errorText = Tr("Kaynak EDS okunamadı: %1").arg(source.errorString());
+        errorText = QCoreApplication::translate("DcfWriter", "Kaynak EDS okunamadı: %1").arg(source.errorString());
         return false;
     }
     const QByteArray raw = source.readAll();

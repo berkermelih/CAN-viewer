@@ -11,6 +11,7 @@
 #include "src/ui/CanOpenPanel.h"
 #include "src/ui/DockTitleBar.h"
 #include "src/ui/FilterPanel.h"
+#include "src/ui/Localization.h"
 #include "src/ui/Theme.h"
 #include "src/ui/ThemeSwitch.h"
 #include "src/ui/TxMessageDialog.h"
@@ -39,6 +40,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QProcess>
 #include <QPushButton>
 #include <QScreen>
 #include <QScrollArea>
@@ -169,6 +171,36 @@ void MainWindow::closeEvent(QCloseEvent *event)
     settings.setValue(QStringLiteral("window/geometry"), saveGeometry());
     settings.setValue(QStringLiteral("window/state"), saveState(WindowStateVersion));
     event->accept();
+
+    // Dil değişikliği için istenen yeniden başlatma: kapanış onaylandıktan sonra yeni örnek açılır.
+    if (m_restartRequested) {
+        m_restartRequested = false;
+        QStringList arguments = QCoreApplication::arguments();
+        if (!arguments.isEmpty()) {
+            arguments.removeFirst();
+        }
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments);
+    }
+}
+
+void MainWindow::ChangeLanguage(AppLanguage language)
+{
+    if (language == SavedLanguage()) {
+        return;
+    }
+    SaveLanguage(language);
+    const auto answer = QMessageBox::question(
+        this, tr("Dil"),
+        tr("Arayüz dili \"%1\" olarak ayarlandı. Değişiklik uygulama yeniden başlatıldığında geçerli olur.\n\n"
+           "Şimdi yeniden başlatılsın mı?")
+            .arg(LanguageNativeName(language)));
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    m_restartRequested = true;
+    if (!close()) {
+        m_restartRequested = false; // kullanıcı kaydedilmemiş değişiklik sorusunda iptal etti
+    }
 }
 
 void MainWindow::BuildUi()
@@ -605,6 +637,19 @@ void MainWindow::BuildMenus()
     m_darkThemeAction->setChecked(Theme::CurrentMode() == Theme::Mode::Dark);
     m_darkThemeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D));
     connect(m_darkThemeAction, &QAction::toggled, this, &MainWindow::SetDarkTheme);
+
+    // Dil adları her dilde kendi adıyla gösterilir (Türkçe / English).
+    viewMenu->addSeparator();
+    QMenu *languageMenu = viewMenu->addMenu(tr("Dil"));
+    auto *languageGroup = new QActionGroup(languageMenu);
+    const AppLanguage savedLanguage = SavedLanguage();
+    for (const AppLanguage language : {AppLanguage::Turkish, AppLanguage::English}) {
+        QAction *action = languageMenu->addAction(LanguageNativeName(language));
+        action->setCheckable(true);
+        action->setChecked(language == savedLanguage);
+        languageGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, language]() { ChangeLanguage(language); });
+    }
 
     QMenu *helpMenu = ui->menubar->addMenu(tr("&Yardım"));
     QAction *checkUpdates = helpMenu->addAction(tr("Güncellemeleri denetle..."));

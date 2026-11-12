@@ -2,6 +2,7 @@
 
 #include "../can/CanFrame.h"
 
+#include <QCoreApplication>
 #include <QStringList>
 
 #include <cstring>
@@ -346,7 +347,7 @@ std::optional<QByteArray> EncodeValue(quint16 dataType, const QString &text, QSt
         if (lower == QLatin1String("0") || lower == QLatin1String("false")) {
             return QByteArray(1, '\x00');
         }
-        errorText = QStringLiteral("BOOLEAN için 0/1 veya TRUE/FALSE girin.");
+        errorText = QCoreApplication::translate("ObjectDictionary", "BOOLEAN için 0/1 veya TRUE/FALSE girin.");
         return std::nullopt;
     }
 
@@ -365,7 +366,7 @@ std::optional<QByteArray> EncodeValue(quint16 dataType, const QString &text, QSt
             }
             // Hex ile girilen ham değerlere (ör. 0xFFFF) izin ver.
             if (!trimmed.startsWith(QLatin1String("0x"), Qt::CaseInsensitive)) {
-                errorText = QStringLiteral("%1 için geçerli aralık %2 .. %3.")
+                errorText = QCoreApplication::translate("ObjectDictionary", "%1 için geçerli aralık %2 .. %3.")
                                 .arg(DataTypeName(dataType)).arg(minValue).arg(maxValue);
                 return std::nullopt;
             }
@@ -373,7 +374,7 @@ std::optional<QByteArray> EncodeValue(quint16 dataType, const QString &text, QSt
 
         const quint64 value = trimmed.toULongLong(&ok, 0);
         if (!ok || value > unsignedMax) {
-            errorText = QStringLiteral("%1 için geçerli bir değer girin (0 .. %2).")
+            errorText = QCoreApplication::translate("ObjectDictionary", "%1 için geçerli bir değer girin (0 .. %2).")
                             .arg(DataTypeName(dataType)).arg(unsignedMax);
             return std::nullopt;
         }
@@ -384,7 +385,7 @@ std::optional<QByteArray> EncodeValue(quint16 dataType, const QString &text, QSt
         bool ok = false;
         const double value = trimmed.toDouble(&ok);
         if (!ok) {
-            errorText = QStringLiteral("Geçerli bir ondalık sayı girin (ör. 1.25).");
+            errorText = QCoreApplication::translate("ObjectDictionary", "Geçerli bir ondalık sayı girin (ör. 1.25).");
             return std::nullopt;
         }
         if (dataType == Real32) {
@@ -414,7 +415,7 @@ std::optional<QByteArray> EncodeValue(quint16 dataType, const QString &text, QSt
     // OCTET_STRING, DOMAIN veya bilinmeyen tip: hex bayt dizisi beklenir.
     QByteArray bytes;
     if (!ParseHexBytes(trimmed, bytes) || bytes.isEmpty()) {
-        errorText = QStringLiteral("Hex bayt dizisi girin (ör. 01 02 0A).");
+        errorText = QCoreApplication::translate("ObjectDictionary", "Hex bayt dizisi girin (ör. 01 02 0A).");
         return std::nullopt;
     }
     return bytes;

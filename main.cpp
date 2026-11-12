@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("CanbusAnalyzer"));
     QApplication::setWindowIcon(Theme::CreateAppIcon());
 
-    // Onay pencerelerindeki standart düğmeler (Kaydet, İptal, Evet, Hayır ...) Türkçe gösterilir.
-    InstallTurkishTranslations(a);
+    // Kayıtlı arayüz dili (Görünüm → Dil); Türkçede standart düğmeler de (Kaydet, İptal ...) Türkçe gösterilir.
+    InstallTranslations(a);
 
     // Kayıtlı tema tercihi (varsayılan: açık)
     const QSettings settings;

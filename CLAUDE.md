@@ -78,6 +78,7 @@ src/
   filter/     ID / aralık / maske / veri filtreleri
   ui/         Paneller (CanOpenPanel, FilterPanel), diyaloglar (TxMessageDialog, DataEditDialog), ThemeSwitch, Theme (renk paleti, QSS, ikonlar) InputHelpers (büyük harfli hex doğrulayıcı, açılır ve sayı kutularında fare tekerleği kilidi), DockTitleBar (panellerin kalıcı, sekmedeyken daralan başlığı; ayrı pencerede tam pencere / eski boyut düğmesi) ve Localization (Qt standart düğmelerinin Türkçesi)
   models/     RxMessageModel, TxMessageModel, TxListFile (.cantx), TraceModel, FrameFilterProxyModel (Rx ve Trace için ortak filtre)
+translations/ Çeviri dosyaları (canbus_en.ts)
 resources/    Qt kaynakları (resources.qrc; çizgi ikonları `currentColor` ile, Theme::Icon tema rengine boyar)
 docs/         Doxygen yapılandırması ve dokümantasyon (Docker ile üretilecek)
 tests/        Qt Test birim testleri (EDS ayrıştırma, filtreler, SDO kodlama)
@@ -97,6 +98,13 @@ tests/        Qt Test birim testleri (EDS ayrıştırma, filtreler, SDO kodlama)
 - EDS / **DCF**: dosya açma (.eds, .dcf; DCF'te ParameterValue "DCF değeri" sütununda, [DeviceComissioning] NodeID hedef düğüme uygulanır), nesne ağacı (index/subindex, ad, tip, erişim, varsayılan değer), seçili nesneye SDO okuma/yazma; "Kaydet (Vendor)" (2105h:00) ve "Kaydet (parametre)" (1010h:01) düğmeleri hedef düğüme "save" (73 61 76 65) yazar. NMT/SYNC kutusundan ve SDO Oku/Yaz/Kaydet düğmeleriyle gönderilen çerçeveler Tx tablosuna da işlenir (parametre seti çerçeveleri hariç). Ağaç CiA 301 alanlarına göre başlıklara ayrılır: Dosya/cihaz bilgisi, Veri tipleri (0001–0FFF), Temel — Communication (1000–1FFF), Vendor specific (2000–5FFF), Device specific (6000–9FFF), Diğer (A000–FFFF). Index/ad ile arama yapılabilir.
 - Parametre seti: rw parametreler cihazdan sırayla okunup DCF olarak kaydedilir (`DcfWriter`, kaynak EDS metni korunur, CompactSubObj nesnelerine değer yazılmaz); kayıtlı DCF cihaza CiA 301 sırasıyla yazılır (PDO devre dışı → eşleme sub0=0/girdiler/sub0=n → diğerleri → COB-ID son değer → isteğe bağlı 1010h:01 "save"). Art arda 3 SDO zaman aşımında işlem durur.
 - Güncelleme denetimi (Yardım menüsü): GitHub Releases `releases/latest` etiketi `src/AppInfo.h` içindeki `Version` ile karşılaştırılır (Qt Network). Yayın etiketi `v<Version>` biçiminde olmalıdır.
+
+## Dil / Çeviri
+
+- Kaynak koddaki arayüz metinleri **Türkçedir**; İngilizce `translations/canbus_en.ts` dosyasından gelir. Görünüm → Dil (Türkçe / English) tercihi QSettings'te (`appearance/language`) saklanır ve yeniden başlatınca uygulanır (`src/ui/Localization`).
+- Kullanıcıya görünen her metin `tr()` veya `QCoreApplication::translate("Bağlam", "...")` içinde yazılır; `QStringLiteral` ile sabit Türkçe metin yazılmaz (lupdate göremez). Dolaylı yardımcı (`Tr(text)` gibi) kullanılmaz.
+- Metin eklenince/değişince: `cmake --build <build> --target update_translations` ile .ts güncellenir, yeni girdilerin İngilizcesi doldurulur (Qt Linguist veya doğrudan .ts). lrelease derlemede .qm üretip `:/i18n` altına gömer (`Qt6::LinguistTools`, yalnızca derleme aracı).
+- Türkçe dilde Qt'nin standart düğmeleri `StandardButtonTranslator` ile Türkçeleşir; İngilizcede Qt'nin kendi metinleri kullanılır.
 
 ## Arayüz Teması
 

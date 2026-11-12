@@ -98,6 +98,18 @@ endif()
 
 target_link_libraries(untitled PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)
 
+# Arayüz çevirileri (kaynak dil Türkçe). lrelease her derlemede .qm üretir ve :/i18n altına gömer.
+# Yeni metinleri .ts dosyasına almak için: cmake --build build --target update_translations
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
+    qt_add_translations(untitled
+        TS_FILES translations/canbus_en.ts
+        RESOURCE_PREFIX "/i18n"
+        NO_GENERATE_PLURALS_TS_FILE
+        LUPDATE_OPTIONS -source-language tr_TR -target-language en_US -no-obsolete
+    )
+endif()
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.

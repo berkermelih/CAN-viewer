@@ -481,7 +481,7 @@ QString PcanInterface::ErrorText(quint32 status) const
             return QString::fromLatin1(buffer);
         }
     }
-    return QStringLiteral("PCAN hata kodu 0x%1").arg(status, 0, 16);
+    return tr("PCAN hata kodu 0x%1").arg(status, 0, 16);
 }
 
 QString PcanInterface::BusStatusText(quint32 status) const

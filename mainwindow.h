@@ -3,6 +3,7 @@
 
 #include "src/can/CanFrame.h"
 #include "src/can/PcanInterface.h"
+#include "src/ui/Localization.h"
 
 #include <QElapsedTimer>
 #include <QList>
@@ -163,6 +164,15 @@ private:
      * @param dark true ise koyu tema.
      */
     void SetDarkTheme(bool dark);
+
+    /**
+     * @brief Arayüz dilini değiştirir: tercihi kaydeder ve uygulamayı yeniden başlatmayı önerir.
+     *
+     * Kabul edilirse pencere normal kapanış akışıyla kapatılır (kaydedilmemiş gönderim listesi
+     * sorulur) ve uygulama yeni dille yeniden açılır.
+     * @param language Yeni dil.
+     */
+    void ChangeLanguage(AppLanguage language);
 
     /// Tema renklerine bağlı model, panel ve ikon renklerini günceller.
     void ApplyThemeColors();
@@ -415,6 +425,7 @@ private:
     ThemeSwitch *m_themeSwitch = nullptr;
     UpdateChecker *m_updateChecker = nullptr;
     QTimer m_dockCheckTimer;
+    bool m_restartRequested = false; ///< Kapanıştan sonra uygulama yeniden başlatılacak mı (dil değişikliği)
 
     // Tablo eylemleri
     QAction *m_txNewAction = nullptr;

@@ -178,7 +178,7 @@ const CanFrame *TraceModel::FramePointerAt(int row) const
 
 QString TraceModel::CsvHeader()
 {
-    return QStringLiteral("No;Zaman_s;Delta_ms;Yon;ID;Tip;DLC;Veri;CANopen");
+    return tr("No;Zaman_s;Delta_ms;Yon;ID;Tip;DLC;Veri;CANopen");
 }
 
 QString TraceModel::CsvLine(int row) const

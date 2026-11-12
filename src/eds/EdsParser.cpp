@@ -10,11 +10,6 @@
 
 namespace {
 
-// Uyarı/hata metinlerini çeviri bağlamıyla üretir.
-QString Tr(const char *text)
-{
-    return QCoreApplication::translate("EdsParser", text);
-}
 
 } // namespace
 
@@ -85,7 +80,7 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
                 }
                 const auto declared = ParseEdsNumber(section.value(QStringLiteral("subnumber")));
                 if (declared && static_cast<int>(*declared) != object.entries.size()) {
-                    warnings << Tr("0x%1: SubNumber=%2 fakat %3 alt nesne bulundu.")
+                    warnings << QCoreApplication::translate("EdsParser", "0x%1: SubNumber=%2 fakat %3 alt nesne bulundu.")
                                     .arg(index, 4, 16, QLatin1Char('0'))
                                     .arg(*declared)
                                     .arg(object.entries.size());
@@ -94,13 +89,13 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
         }
 
         if (object.name.isEmpty()) {
-            warnings << Tr("0x%1: ParameterName eksik.").arg(index, 4, 16, QLatin1Char('0'));
+            warnings << QCoreApplication::translate("EdsParser", "0x%1: ParameterName eksik.").arg(index, 4, 16, QLatin1Char('0'));
         }
         dictionary.InsertObject(object);
     }
 
     if (dictionary.IsEmpty()) {
-        errorText = Tr("Dosyada CANopen nesnesi bulunamadı; geçerli bir EDS dosyası değil.");
+        errorText = QCoreApplication::translate("EdsParser", "Dosyada CANopen nesnesi bulunamadı; geçerli bir EDS dosyası değil.");
         return std::nullopt;
     }
 
@@ -108,7 +103,7 @@ std::optional<ObjectDictionary> EdsParser::OpenEdsFile(const QString &filePath, 
     const quint16 mandatory[] = {0x1000, 0x1001, 0x1018};
     for (const quint16 index : mandatory) {
         if (dictionary.FindObject(index) == nullptr) {
-            warnings << Tr("Zorunlu nesne 0x%1 bulunamadı.").arg(index, 4, 16, QLatin1Char('0'));
+            warnings << QCoreApplication::translate("EdsParser", "Zorunlu nesne 0x%1 bulunamadı.").arg(index, 4, 16, QLatin1Char('0'));
         }
     }
 
@@ -120,7 +115,7 @@ bool EdsParser::ReadIniDocument(const QString &filePath, IniDocument &document, 
 {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        errorText = Tr("Dosya açılamadı: %1 (%2)").arg(QFileInfo(filePath).fileName(), file.errorString());
+        errorText = QCoreApplication::translate("EdsParser", "Dosya açılamadı: %1 (%2)").arg(QFileInfo(filePath).fileName(), file.errorString());
         return false;
     }
 
@@ -184,7 +179,7 @@ void EdsParser::ExpandCompactSubObjects(const IniDocument &document, const IniSe
     OdEntry countEntry;
     countEntry.index = object.index;
     countEntry.subIndex = 0;
-    countEntry.name = Tr("Number of entries");
+    countEntry.name = QCoreApplication::translate("EdsParser", "Number of entries");
     countEntry.dataType = CanOpenDataType::Unsigned8;
     countEntry.accessType = QStringLiteral("ro");
     countEntry.defaultValue = QString::number(count);
