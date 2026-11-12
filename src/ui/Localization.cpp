@@ -57,6 +57,11 @@ QString StandardButtonTranslator::translate(const char *context, const char *sou
     if (context == nullptr || sourceText == nullptr || context[0] != 'Q') {
         return QString();
     }
+    // Kısayol tuş adları (QKeySequence::toString: Esc, Space, Ctrl, Shift, Del ...) İngilizce kalır;
+    // kaynak metin aynen döndürülür ki qtbase_tr.qm "Vazgeç", "Boşluk", "Kontrol" yazmasın.
+    if (qstrcmp(context, "QShortcut") == 0) {
+        return QString::fromLatin1(sourceText);
+    }
     return ButtonTexts().value(QByteArray(sourceText));
 }
 

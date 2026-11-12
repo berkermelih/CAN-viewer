@@ -17,7 +17,9 @@ enum class AppLanguage
  * @brief Qt'nin standart düğme metinlerini (Save, Cancel, Yes, No ...) Türkçeye çeviren çevirmen.
  *
  * Qt'nin kendi Türkçe çevirisi (qtbase_tr.qm) bulunamasa veya eksik olsa da onay
- * pencerelerindeki düğmelerin Türkçe görünmesini garanti eder. Yalnızca Türkçe dilde kurulur.
+ * pencerelerindeki düğmelerin Türkçe görünmesini garanti eder. Kısayol tuş adlarını
+ * ("QShortcut" bağlamı: Esc, Space, Ctrl+S ...) ise qtbase_tr.qm'ye bırakmaz, İngilizce tutar.
+ * Yalnızca Türkçe dilde kurulur.
  */
 class StandardButtonTranslator : public QTranslator
 {
@@ -31,12 +33,13 @@ public:
     explicit StandardButtonTranslator(QObject *parent = nullptr);
 
     /**
-     * @brief Standart düğme metni ise Türkçe karşılığını döndürür.
+     * @brief Standart düğme metni ise Türkçe karşılığını, kısayol tuş adı ise İngilizce aslını döndürür.
      * @param context Çeviri bağlamı; yalnızca Qt sınıflarının ('Q' ile başlayan) bağlamları çevrilir.
      * @param sourceText İngilizce kaynak metin.
      * @param disambiguation Ayırt edici not (kullanılmaz).
      * @param n Çoğul sayısı (kullanılmaz).
-     * @return Türkçe metin; tanınmayan metin için boş (Qt bir sonraki çevirmene geçer).
+     * @return Türkçe metin, "QShortcut" bağlamında kaynak metnin kendisi; tanınmayan metin için boş
+     *         (Qt bir sonraki çevirmene geçer).
      */
     QString translate(const char *context, const char *sourceText, const char *disambiguation = nullptr,
                       int n = -1) const override;

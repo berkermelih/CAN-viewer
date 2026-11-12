@@ -1087,27 +1087,27 @@
 <context>
     <name>DockTitleBar</name>
     <message>
-        <location filename="../src/ui/DockTitleBar.cpp" line="33"/>
+        <location filename="../src/ui/DockTitleBar.cpp" line="45"/>
         <source>Paneli kapat (Görünüm menüsünden yeniden açılır)</source>
         <translation>Close panel (can be reopened from the View menu)</translation>
     </message>
     <message>
-        <location filename="../src/ui/DockTitleBar.cpp" line="134"/>
+        <location filename="../src/ui/DockTitleBar.cpp" line="285"/>
         <source>Eski boyutuna döndür</source>
         <translation>Restore previous size</translation>
     </message>
     <message>
-        <location filename="../src/ui/DockTitleBar.cpp" line="134"/>
+        <location filename="../src/ui/DockTitleBar.cpp" line="285"/>
         <source>Tam pencere (ekranı kapla)</source>
         <translation>Full window (fill the screen)</translation>
     </message>
     <message>
-        <location filename="../src/ui/DockTitleBar.cpp" line="135"/>
+        <location filename="../src/ui/DockTitleBar.cpp" line="286"/>
         <source>Ana pencereye yerleştir</source>
         <translation>Dock into main window</translation>
     </message>
     <message>
-        <location filename="../src/ui/DockTitleBar.cpp" line="135"/>
+        <location filename="../src/ui/DockTitleBar.cpp" line="286"/>
         <source>Ayrı pencereye al</source>
         <translation>Move to separate window</translation>
     </message>
@@ -1323,13 +1323,13 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../mainwindow.cpp" line="193"/>
-        <location filename="../mainwindow.cpp" line="643"/>
+        <location filename="../mainwindow.cpp" line="195"/>
+        <location filename="../mainwindow.cpp" line="791"/>
         <source>Dil</source>
         <translation>Language</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="194"/>
+        <location filename="../mainwindow.cpp" line="196"/>
         <source>Arayüz dili &quot;%1&quot; olarak ayarlandı. Değişiklik uygulama yeniden başlatıldığında geçerli olur.
 
 Şimdi yeniden başlatılsın mı?</source>
@@ -1338,417 +1338,423 @@
 Restart now?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="272"/>
+        <location filename="../mainwindow.cpp" line="274"/>
         <source>Yeni mesaj...</source>
         <translation>New message...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="273"/>
+        <location filename="../mainwindow.cpp" line="275"/>
         <source>Mesajı düzenle...</source>
         <translation>Edit message...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="275"/>
+        <location filename="../mainwindow.cpp" line="277"/>
         <source>Şimdi gönder</source>
         <translation>Send now</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="276"/>
+        <location filename="../mainwindow.cpp" line="278"/>
         <source>Kes</source>
         <translation>Cut</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="277"/>
-        <location filename="../mainwindow.cpp" line="283"/>
-        <location filename="../mainwindow.cpp" line="285"/>
+        <location filename="../mainwindow.cpp" line="279"/>
+        <location filename="../mainwindow.cpp" line="290"/>
+        <location filename="../mainwindow.cpp" line="292"/>
         <source>Kopyala</source>
         <translation>Copy</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="278"/>
+        <location filename="../mainwindow.cpp" line="280"/>
         <source>Yapıştır</source>
         <translation>Paste</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="279"/>
-        <location filename="../mainwindow.cpp" line="789"/>
+        <location filename="../mainwindow.cpp" line="281"/>
+        <location filename="../mainwindow.cpp" line="937"/>
         <source>Sil</source>
         <translation>Remove</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="280"/>
-        <source>Tümünü temizle</source>
-        <translation>Clear all</translation>
-    </message>
-    <message>
-        <location filename="../mainwindow.cpp" line="284"/>
+        <location filename="../mainwindow.cpp" line="291"/>
         <source>Satırı sil</source>
         <translation>Delete row</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="288"/>
+        <location filename="../mainwindow.cpp" line="295"/>
         <source>Rx tablosunu temizle</source>
         <translation>Clear Rx table</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="291"/>
+        <location filename="../mainwindow.cpp" line="298"/>
         <source>Alınan mesajlar tablosunu temizle (Esc)</source>
         <translation>Clear the received messages table (Esc)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="295"/>
+        <location filename="../mainwindow.cpp" line="302"/>
         <source>Gönderim listesini aç...</source>
         <translation>Open transmit list...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="298"/>
-        <location filename="../mainwindow.cpp" line="1538"/>
+        <location filename="../mainwindow.cpp" line="305"/>
+        <location filename="../mainwindow.cpp" line="1686"/>
         <source>Gönderim listesini kaydet</source>
         <translation>Save transmit list</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="301"/>
+        <location filename="../mainwindow.cpp" line="308"/>
         <source>Gönderim listesini farklı kaydet...</source>
         <translation>Save transmit list as...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="304"/>
+        <location filename="../mainwindow.cpp" line="311"/>
         <source>Trace&apos;i CSV olarak kaydet...</source>
         <translation>Save trace as CSV...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="307"/>
+        <location filename="../mainwindow.cpp" line="314"/>
         <source>EDS dosyası aç...</source>
         <translation>Open EDS file...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="342"/>
+        <location filename="../mainwindow.cpp" line="356"/>
         <source>Mesajlar</source>
         <translation>Messages</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="343"/>
-        <location filename="../mainwindow.cpp" line="843"/>
-        <location filename="../mainwindow.cpp" line="1668"/>
-        <location filename="../mainwindow.cpp" line="1682"/>
+        <location filename="../mainwindow.cpp" line="357"/>
+        <location filename="../mainwindow.cpp" line="991"/>
+        <location filename="../mainwindow.cpp" line="1816"/>
+        <location filename="../mainwindow.cpp" line="1830"/>
         <source>Trace</source>
         <translation>Trace</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="349"/>
+        <location filename="../mainwindow.cpp" line="363"/>
         <source>CANopen / EDS</source>
         <translation>CANopen / EDS</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="351"/>
+        <location filename="../mainwindow.cpp" line="365"/>
         <source>Filtre</source>
         <translation>Filter</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="501"/>
+        <location filename="../mainwindow.cpp" line="648"/>
         <source>Bağlantı</source>
         <translation>Connection</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="509"/>
-        <location filename="../mainwindow.cpp" line="1619"/>
+        <location filename="../mainwindow.ui" line="14"/>
+        <location filename="../mainwindow.cpp" line="656"/>
+        <location filename="../mainwindow.cpp" line="1767"/>
         <source>Canbus Analyzer</source>
         <translation>Canbus Analyzer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="516"/>
+        <location filename="../mainwindow.cpp" line="282"/>
+        <source>Tx tablosunu temizle</source>
+        <translation>Clear Tx table</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="287"/>
+        <source>Gönderim listesindeki tüm mesajları sil (Shift+Esc)</source>
+        <translation>Delete all messages in the transmit list (Shift+Esc)</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="663"/>
         <source>Port seç</source>
         <translation>Select port</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="522"/>
+        <location filename="../mainwindow.cpp" line="669"/>
         <source>CAN CC</source>
         <translation>CAN CC</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="523"/>
+        <location filename="../mainwindow.cpp" line="670"/>
         <source>CAN FD</source>
         <translation>CAN FD</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="524"/>
+        <location filename="../mainwindow.cpp" line="671"/>
         <source>CAN CC: klasik CAN · CAN FD: esnek veri hızı (FD destekli adaptör gerekir)</source>
         <translation>CAN CC: classic CAN · CAN FD: flexible data rate (requires an FD-capable adapter)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="528"/>
+        <location filename="../mainwindow.cpp" line="675"/>
         <source>Nominal (arbitration) bit hızı</source>
         <translation>Nominal (arbitration) bit rate</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="531"/>
+        <location filename="../mainwindow.cpp" line="678"/>
         <source>CAN FD veri fazı bit hızı (BRS)</source>
         <translation>CAN FD data phase bit rate (BRS)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="546"/>
+        <location filename="../mainwindow.cpp" line="693"/>
         <source>Port</source>
         <translation>Port</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="548"/>
+        <location filename="../mainwindow.cpp" line="695"/>
         <source>Mod</source>
         <translation>Mode</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="550"/>
+        <location filename="../mainwindow.cpp" line="697"/>
         <source>Bit hızı</source>
         <translation>Bit rate</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="552"/>
+        <location filename="../mainwindow.cpp" line="699"/>
         <source>Veri hızı</source>
         <translation>Data rate</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="557"/>
-        <location filename="../mainwindow.cpp" line="1146"/>
+        <location filename="../mainwindow.cpp" line="704"/>
+        <location filename="../mainwindow.cpp" line="1294"/>
         <source>Bağlan</source>
         <translation>Connect</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="559"/>
+        <location filename="../mainwindow.cpp" line="706"/>
         <source>Bağlan / bağlantıyı kes (F5)</source>
         <translation>Connect / disconnect (F5)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="573"/>
+        <location filename="../mainwindow.cpp" line="720"/>
         <source>Açık / koyu tema (Ctrl+Shift+D)</source>
         <translation>Light / dark theme (Ctrl+Shift+D)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="585"/>
+        <location filename="../mainwindow.cpp" line="732"/>
         <source>&amp;Dosya</source>
         <translation>&amp;File</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="587"/>
+        <location filename="../mainwindow.cpp" line="734"/>
         <source>Son kullanılan listeler</source>
         <translation>Recent lists</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="594"/>
+        <location filename="../mainwindow.cpp" line="741"/>
         <source>Çı&amp;kış</source>
         <translation>E&amp;xit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="599"/>
+        <location filename="../mainwindow.cpp" line="746"/>
         <source>&amp;Bus</source>
         <translation>&amp;Bus</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="601"/>
+        <location filename="../mainwindow.cpp" line="748"/>
         <source>Portları yeniden tara</source>
         <translation>Rescan ports</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="605"/>
-        <location filename="../mainwindow.cpp" line="1477"/>
+        <location filename="../mainwindow.cpp" line="753"/>
+        <location filename="../mainwindow.cpp" line="1625"/>
         <source>Trace&apos;i temizle</source>
         <translation>Clear trace</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="607"/>
+        <location filename="../mainwindow.cpp" line="755"/>
         <source>Tx sayaçlarını sıfırla</source>
         <translation>Reset Tx counters</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="610"/>
+        <location filename="../mainwindow.cpp" line="758"/>
         <source>&amp;Gönder</source>
         <translation>&amp;Transmit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="618"/>
+        <location filename="../mainwindow.cpp" line="766"/>
         <source>&amp;Görünüm</source>
         <translation>&amp;View</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="624"/>
+        <location filename="../mainwindow.cpp" line="772"/>
         <source>Pencere düzeni</source>
         <translation>Window layout</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="625"/>
+        <location filename="../mainwindow.cpp" line="773"/>
         <source>Sekmeli (tek pencere)</source>
         <translation>Tabbed (single window)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="627"/>
+        <location filename="../mainwindow.cpp" line="775"/>
         <source>Üç bölmeli (Mesajlar | Trace / CANopen)</source>
         <translation>Three panes (Messages | Trace / CANopen)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="630"/>
+        <location filename="../mainwindow.cpp" line="778"/>
         <source>İpucu: sekmeyi sürükleyip bırakarak paneli ayırın veya bölün</source>
         <translation>Tip: drag and drop a tab to detach or split the panel</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="635"/>
+        <location filename="../mainwindow.cpp" line="783"/>
         <source>Koyu tema</source>
         <translation>Dark theme</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="654"/>
+        <location filename="../mainwindow.cpp" line="802"/>
         <source>&amp;Yardım</source>
         <translation>&amp;Help</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="655"/>
+        <location filename="../mainwindow.cpp" line="803"/>
         <source>Güncellemeleri denetle...</source>
         <translation>Check for updates...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="658"/>
+        <location filename="../mainwindow.cpp" line="806"/>
         <source>&amp;Hakkında</source>
         <translation>&amp;About</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="664"/>
+        <location filename="../mainwindow.cpp" line="812"/>
         <source>CAN ID biçimi</source>
         <translation>CAN ID format</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="666"/>
-        <location filename="../mainwindow.cpp" line="679"/>
+        <location filename="../mainwindow.cpp" line="814"/>
+        <location filename="../mainwindow.cpp" line="827"/>
         <source>Onaltılık (hex)</source>
         <translation>Hexadecimal (hex)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="667"/>
-        <location filename="../mainwindow.cpp" line="680"/>
+        <location filename="../mainwindow.cpp" line="815"/>
+        <location filename="../mainwindow.cpp" line="828"/>
         <source>Onluk (dec)</source>
         <translation>Decimal (dec)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="677"/>
+        <location filename="../mainwindow.cpp" line="825"/>
         <source>Veri baytları biçimi</source>
         <translation>Data byte format</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="681"/>
+        <location filename="../mainwindow.cpp" line="829"/>
         <source>ASCII</source>
         <translation>ASCII</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="744"/>
+        <location filename="../mainwindow.cpp" line="892"/>
         <source>Alınan mesajlar</source>
         <translation>Received messages</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="746"/>
+        <location filename="../mainwindow.cpp" line="894"/>
         <source>Her ID tek satırda · verisi değişen satırlar vurgulanır · sağ tık: seçenekler</source>
         <translation>One row per ID · rows with changed data are highlighted · right-click: options</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="781"/>
+        <location filename="../mainwindow.cpp" line="929"/>
         <source>Gönderilecek mesajlar</source>
         <translation>Messages to transmit</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="784"/>
+        <location filename="../mainwindow.cpp" line="932"/>
         <source>Gönderim listesini aç (Ctrl+Shift+O)</source>
         <translation>Open transmit list (Ctrl+Shift+O)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="786"/>
+        <location filename="../mainwindow.cpp" line="934"/>
         <source>Gönderim listesini kaydet (Ctrl+S)</source>
         <translation>Save transmit list (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="787"/>
+        <location filename="../mainwindow.cpp" line="935"/>
         <source>Yeni...</source>
         <translation>New...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="788"/>
+        <location filename="../mainwindow.cpp" line="936"/>
         <source>Düzenle...</source>
         <translation>Edit...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="791"/>
+        <location filename="../mainwindow.cpp" line="939"/>
         <source>Gönder</source>
         <translation>Send</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="793"/>
+        <location filename="../mainwindow.cpp" line="941"/>
         <source>Seçili mesajları bir kez gönder (tabloda Boşluk)</source>
         <translation>Send the selected messages once (Space in the table)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="847"/>
+        <location filename="../mainwindow.cpp" line="995"/>
         <source>Tüm Rx/Tx çerçeveleri geliş sırasıyla · en fazla 100 000 kayıt</source>
         <translation>All Rx/Tx frames in order of arrival · at most 100 000 records</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="850"/>
-        <location filename="../mainwindow.cpp" line="1473"/>
+        <location filename="../mainwindow.cpp" line="998"/>
+        <location filename="../mainwindow.cpp" line="1621"/>
         <source>Filtreyi uygula</source>
         <translation>Apply filter</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="855"/>
-        <location filename="../mainwindow.cpp" line="1469"/>
+        <location filename="../mainwindow.cpp" line="1003"/>
+        <location filename="../mainwindow.cpp" line="1617"/>
         <source>Otomatik kaydır</source>
         <translation>Auto-scroll</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="858"/>
-        <location filename="../mainwindow.cpp" line="862"/>
+        <location filename="../mainwindow.cpp" line="1006"/>
+        <location filename="../mainwindow.cpp" line="1010"/>
         <source>Duraklat</source>
         <translation>Pause</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="862"/>
+        <location filename="../mainwindow.cpp" line="1010"/>
         <source>Sürdür</source>
         <translation>Resume</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="865"/>
+        <location filename="../mainwindow.cpp" line="1013"/>
         <source>Temizle</source>
         <translation>Clear</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="867"/>
+        <location filename="../mainwindow.cpp" line="1015"/>
         <source>CSV kaydet...</source>
         <translation>Save CSV...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="990"/>
+        <location filename="../mainwindow.cpp" line="1138"/>
         <source>Handle 0x%1 · cihaz no %2 · %3</source>
         <translation>Handle 0x%1 · device no. %2 · %3</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="993"/>
+        <location filename="../mainwindow.cpp" line="1141"/>
         <source>CAN FD destekli</source>
         <translation>CAN FD capable</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="993"/>
+        <location filename="../mainwindow.cpp" line="1141"/>
         <source>yalnızca CAN CC</source>
         <translation>CAN CC only</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1005"/>
+        <location filename="../mainwindow.cpp" line="1153"/>
         <source>Bağlı PCAN cihazı bulunamadı. Cihazı takın; liste otomatik güncellenir.</source>
         <translation>No connected PCAN device found. Plug in the device; the list updates automatically.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1009"/>
+        <location filename="../mainwindow.cpp" line="1157"/>
         <source>%1 PCAN kanalı algılandı</source>
         <translation>%1 PCAN channel(s) detected</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1022"/>
+        <location filename="../mainwindow.cpp" line="1170"/>
         <source>Seçili adaptör CAN FD desteklemiyor</source>
         <translation>The selected adapter does not support CAN FD</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1076"/>
+        <location filename="../mainwindow.cpp" line="1224"/>
         <source>Bağlanmak için bir port seçin.
 
 Bağlı PCAN cihazı algılanamadı; cihazın takılı ve PEAK sürücüsünün kurulu olduğundan emin olun.</source>
@@ -1757,27 +1763,27 @@ Bağlı PCAN cihazı algılanamadı; cihazın takılı ve PEAK sürücüsünün 
 No connected PCAN device was detected; make sure the device is plugged in and the PEAK driver is installed.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1081"/>
+        <location filename="../mainwindow.cpp" line="1229"/>
         <source>Port seçilmedi</source>
         <translation>No port selected</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1102"/>
+        <location filename="../mainwindow.cpp" line="1250"/>
         <source>Bağlantı Hatası</source>
         <translation>Connection Error</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1136"/>
+        <location filename="../mainwindow.cpp" line="1284"/>
         <source>Bağlantı koptu.</source>
         <translation>Connection lost.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1137"/>
+        <location filename="../mainwindow.cpp" line="1285"/>
         <source>Bağlantı koptu</source>
         <translation>Connection lost</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1138"/>
+        <location filename="../mainwindow.cpp" line="1286"/>
         <source>CAN bağlantısı kesildi.
 
 %1
@@ -1790,232 +1796,232 @@ Adaptörü yeniden takıp &quot;Bağlan&quot; ile tekrar bağlanabilirsiniz.</so
 You can plug the adapter back in and reconnect with &quot;Connect&quot;.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1146"/>
+        <location filename="../mainwindow.cpp" line="1294"/>
         <source>Bağlantıyı Kes</source>
         <translation>Disconnect</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1162"/>
+        <location filename="../mainwindow.cpp" line="1310"/>
         <source>CAN FD %1 / %2</source>
         <translation>CAN FD %1 / %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1164"/>
+        <location filename="../mainwindow.cpp" line="1312"/>
         <source>Bağlı: %1 @ %2</source>
         <translation>Connected: %1 @ %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1166"/>
+        <location filename="../mainwindow.cpp" line="1314"/>
         <source>Bağlı değil</source>
         <translation>Not connected</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1181"/>
+        <location filename="../mainwindow.cpp" line="1329"/>
         <source>CAN arayüzü bağlı değil.</source>
         <translation>CAN interface is not connected.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1213"/>
+        <location filename="../mainwindow.cpp" line="1361"/>
         <source>Seçili adaptör (%1) CAN FD desteklemiyor.</source>
         <translation>The selected adapter (%1) does not support CAN FD.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1283"/>
+        <location filename="../mainwindow.cpp" line="1431"/>
         <source>%1 mesaj kopyalandı</source>
         <translation>%1 message(s) copied</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1310"/>
+        <location filename="../mainwindow.cpp" line="1458"/>
         <source>Panoda yapıştırılacak gönderim mesajı yok.</source>
         <translation>No transmit messages to paste on the clipboard.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1332"/>
-        <location filename="../mainwindow.cpp" line="1506"/>
-        <location filename="../mainwindow.cpp" line="1552"/>
+        <location filename="../mainwindow.cpp" line="1480"/>
+        <location filename="../mainwindow.cpp" line="1654"/>
+        <location filename="../mainwindow.cpp" line="1700"/>
         <source>Gönderim listesi</source>
         <translation>Transmit list</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1333"/>
+        <location filename="../mainwindow.cpp" line="1481"/>
         <source>Gönderim listesindeki %1 mesajın tümü silinsin mi?</source>
         <translation>Delete all %1 messages in the transmit list?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1467"/>
+        <location filename="../mainwindow.cpp" line="1615"/>
         <source>Kaydı sürdür</source>
         <translation>Resume recording</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1467"/>
+        <location filename="../mainwindow.cpp" line="1615"/>
         <source>Kaydı duraklat</source>
         <translation>Pause recording</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1495"/>
+        <location filename="../mainwindow.cpp" line="1643"/>
         <source>Gönderim listesini aç</source>
         <translation>Open transmit list</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1507"/>
+        <location filename="../mainwindow.cpp" line="1655"/>
         <source>%1 açılamadı:
 %2</source>
         <translation>%1 could not be opened:
 %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1517"/>
+        <location filename="../mainwindow.cpp" line="1665"/>
         <source>%1 mesaj yüklendi: %2</source>
         <translation>%1 message(s) loaded: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1552"/>
+        <location filename="../mainwindow.cpp" line="1700"/>
         <source>Dosya kaydedilemedi:
 %1</source>
         <translation>File could not be saved:
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1559"/>
+        <location filename="../mainwindow.cpp" line="1707"/>
         <source>%1 mesaj kaydedildi: %2</source>
         <translation>%1 message(s) saved: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1568"/>
+        <location filename="../mainwindow.cpp" line="1716"/>
         <source>Adsız gönderim listesi</source>
         <translation>Untitled transmit list</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1570"/>
+        <location filename="../mainwindow.cpp" line="1718"/>
         <source>Kaydedilmemiş değişiklikler</source>
         <translation>Unsaved changes</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1571"/>
+        <location filename="../mainwindow.cpp" line="1719"/>
         <source>&quot;%1&quot; üzerinde kaydedilmemiş değişiklikler var. Kaydetmek ister misiniz?</source>
         <translation>&quot;%1&quot; has unsaved changes. Do you want to save them?</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1623"/>
+        <location filename="../mainwindow.cpp" line="1771"/>
         <source>%1[*] — Canbus Analyzer</source>
         <translation>%1[*] — Canbus Analyzer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1631"/>
+        <location filename="../mainwindow.cpp" line="1779"/>
         <source>Rx %1 · %2/s</source>
         <translation>Rx %1 · %2/s</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1632"/>
+        <location filename="../mainwindow.cpp" line="1780"/>
         <source>Tx %1</source>
         <translation>Tx %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1635"/>
+        <location filename="../mainwindow.cpp" line="1783"/>
         <source>Filtre açık · %1/%2 ID</source>
         <translation>Filter on · %1/%2 IDs</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1636"/>
+        <location filename="../mainwindow.cpp" line="1784"/>
         <source>Filtre kapalı</source>
         <translation>Filter off</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1638"/>
+        <location filename="../mainwindow.cpp" line="1786"/>
         <source>%1 kayıt</source>
         <translation>%1 records</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1640"/>
+        <location filename="../mainwindow.cpp" line="1788"/>
         <source>%1 / %2 kayıt</source>
         <translation>%1 / %2 records</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1643"/>
+        <location filename="../mainwindow.cpp" line="1791"/>
         <source> · duraklatıldı</source>
         <translation> · paused</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1668"/>
+        <location filename="../mainwindow.cpp" line="1816"/>
         <source>Kaydedilecek trace kaydı yok.</source>
         <translation>There are no trace records to save.</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1675"/>
+        <location filename="../mainwindow.cpp" line="1823"/>
         <source>Trace&apos;i kaydet</source>
         <translation>Save trace</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1675"/>
+        <location filename="../mainwindow.cpp" line="1823"/>
         <source>CSV dosyaları (*.csv)</source>
         <translation>CSV files (*.csv)</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1682"/>
+        <location filename="../mainwindow.cpp" line="1830"/>
         <source>Dosya yazılamadı: %1</source>
         <translation>File could not be written: %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1693"/>
+        <location filename="../mainwindow.cpp" line="1841"/>
         <source>%1 kayıt kaydedildi: %2</source>
         <translation>%1 records saved: %2</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1724"/>
+        <location filename="../mainwindow.cpp" line="1872"/>
         <source>Güncelleme var</source>
         <translation>Update available</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1725"/>
+        <location filename="../mainwindow.cpp" line="1873"/>
         <source>Yeni sürüm mevcut: &lt;b&gt;%1&lt;/b&gt; (kullandığınız: %2).</source>
         <translation>A new version is available: &lt;b&gt;%1&lt;/b&gt; (you are using %2).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1731"/>
+        <location filename="../mainwindow.cpp" line="1879"/>
         <source>İndirme sayfasını aç</source>
         <translation>Open download page</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1732"/>
+        <location filename="../mainwindow.cpp" line="1880"/>
         <source>Daha sonra</source>
         <translation>Later</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1739"/>
-        <location filename="../mainwindow.cpp" line="1744"/>
-        <location filename="../mainwindow.cpp" line="1750"/>
+        <location filename="../mainwindow.cpp" line="1887"/>
+        <location filename="../mainwindow.cpp" line="1892"/>
+        <location filename="../mainwindow.cpp" line="1898"/>
         <source>Güncelleme</source>
         <translation>Update</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1740"/>
+        <location filename="../mainwindow.cpp" line="1888"/>
         <source>Canbus Analyzer güncel (sürüm %1, en son yayın %2).</source>
         <translation>Canbus Analyzer is up to date (version %1, latest release %2).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1745"/>
+        <location filename="../mainwindow.cpp" line="1893"/>
         <source>GitHub deposunda henüz yayınlanmış bir sürüm yok (%1/%2).</source>
         <translation>There is no published release in the GitHub repository yet (%1/%2).</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1750"/>
+        <location filename="../mainwindow.cpp" line="1898"/>
         <source>Güncelleme denetlenemedi:
 %1</source>
         <translation>Could not check for updates:
 %1</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1753"/>
+        <location filename="../mainwindow.cpp" line="1901"/>
         <source>Güncellemeler denetleniyor...</source>
         <translation>Checking for updates...</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1759"/>
+        <location filename="../mainwindow.cpp" line="1907"/>
         <source>Canbus Analyzer Hakkında</source>
         <translation>About Canbus Analyzer</translation>
     </message>
     <message>
-        <location filename="../mainwindow.cpp" line="1760"/>
+        <location filename="../mainwindow.cpp" line="1908"/>
         <source>&lt;h3&gt;Canbus Analyzer %2&lt;/h3&gt;&lt;p&gt;CAN bus izleme ve CANopen (EDS, SDO, NMT, PDO) aracı.&lt;/p&gt;&lt;p&gt;Donanım: PEAK PCAN (PCAN-Basic) · CAN CC ve CAN FD.&lt;br&gt;CAN XL, PCAN-Basic sürücüsü tarafından desteklenmediği için kullanılamaz.&lt;/p&gt;&lt;p&gt;Qt %1&lt;/p&gt;</source>
         <translation>&lt;h3&gt;Canbus Analyzer %2&lt;/h3&gt;&lt;p&gt;CAN bus monitoring and CANopen (EDS, SDO, NMT, PDO) tool.&lt;/p&gt;&lt;p&gt;Hardware: PEAK PCAN (PCAN-Basic) · CAN CC and CAN FD.&lt;br&gt;CAN XL is not available because it is not supported by the PCAN-Basic driver.&lt;/p&gt;&lt;p&gt;Qt %1&lt;/p&gt;</translation>
     </message>

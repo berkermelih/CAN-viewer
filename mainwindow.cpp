@@ -60,7 +60,9 @@
 namespace {
 
 // Pencere düzeni kaydının sürümü; panel yapısı değişirse artırılır.
-constexpr int WindowStateVersion = 2;
+// 3: ayrı pencereler artık birbirine birleşmez; birleşmiş pencere içerebilen eski kayıtlar (Qt 6.11'de
+// geri yüklenince bozuk grup kurulup sürüklemede çöküyordu) yok sayılır.
+constexpr int WindowStateVersion = 3;
 // "Son kullanılan listeler" menüsündeki en fazla dosya sayısı.
 constexpr int MaxRecentFiles = 6;
 
@@ -277,8 +279,13 @@ void MainWindow::BuildActions()
     m_txCopyAction = makeAction(tr("Kopyala"), {QKeySequence::Copy}, &MainWindow::CopyTxMessages);
     m_txPasteAction = makeAction(tr("Yapıştır"), {QKeySequence::Paste}, &MainWindow::PasteTxMessages);
     m_txDeleteAction = makeAction(tr("Sil"), {QKeySequence::Delete}, &MainWindow::RemoveTxMessages);
-    m_txClearAction = makeAction(tr("Tümünü temizle"), {QKeySequence(Qt::SHIFT | Qt::Key_Escape)},
+    m_txClearAction = makeAction(tr("Tx tablosunu temizle"), {QKeySequence(Qt::SHIFT | Qt::Key_Escape)},
                                  &MainWindow::ClearTxMessages);
+    // Rx'teki Esc gibi pencere genelinde çalışır (Bus menüsünde de bulunur); silmeden önce onay sorulur.
+    // Eylem Tx tablosuna da ekli olduğundan Mesajlar paneli ayrı penceredeyken de çalışır.
+    m_txClearAction->setShortcutContext(Qt::WindowShortcut);
+    m_txClearAction->setToolTip(tr("Gönderim listesindeki tüm mesajları sil (Shift+Esc)"));
+    addAction(m_txClearAction);
 
     m_rxCopyAction = makeAction(tr("Kopyala"), {QKeySequence::Copy}, &MainWindow::CopyRxRows);
     m_rxDeleteAction = makeAction(tr("Satırı sil"), {QKeySequence::Delete}, &MainWindow::RemoveRxRows);
@@ -317,7 +324,12 @@ QDockWidget *MainWindow::CreateDock(const QString &title, const QString &objectN
     dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable
                       | QDockWidget::DockWidgetClosable);
     // Başlık çubuğu bir kez atanır ve bir daha değiştirilmez (bkz. DockTitleBar); sekmedeyken yalnızca daraltılır.
-    dock->setTitleBarWidget(new DockTitleBar(dock));
+    auto *titleBar = new DockTitleBar(dock);
+    dock->setTitleBarWidget(titleBar);
+    connect(titleBar, &DockTitleBar::DockRequested, this, [this, dock]() {
+        // Panel sinyal içinde yeniden yerleştirileceğinden işlem olay döngüsüne bırakılır.
+        QTimer::singleShot(0, this, [this, dock]() { DockIntoMainWindow(dock); });
+    });
     const auto schedule = [this]() { QTimer::singleShot(0, this, &MainWindow::UpdateDockTitleBars); };
     connect(dock, &QDockWidget::topLevelChanged, this, schedule);
     connect(dock, &QDockWidget::dockLocationChanged, this, schedule);
@@ -329,8 +341,10 @@ void MainWindow::BuildDocks()
 {
     // Merkez widget gizlenir; tüm alanı paneller paylaşır ve serbestçe bölünebilir.
     centralWidget()->hide();
-    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks
-                   | QMainWindow::GroupedDragging);
+    // GroupedDragging bilerek kapalı: açıkken Qt ayrı pencereleri birbirine birleştirir
+    // (QDockWidgetGroupWindow). Birleştirme yalnızca ana pencerede (bölme / sekme) yapılır. Bu seçenek
+    // kapalıyken Qt sekmeden sürükleyip ayırmayı sunmadığından o davranış eventFilter'da yapılır.
+    setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
     setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
     connect(this, &QMainWindow::tabifiedDockWidgetActivated, this,
             [this]() { QTimer::singleShot(0, this, &MainWindow::UpdateDockTitleBars); });
@@ -403,6 +417,11 @@ void MainWindow::ApplySplitLayout()
 
 void MainWindow::UpdateDockTitleBars()
 {
+    // Panel sürüklenirken başlık boyutu değiştirilmez (sürükleme durumu ve Qt'nin bırakma yerleşimi
+    // bozulmasın); fare bırakılınca zamanlayıcı başlıkları günceller.
+    if (QGuiApplication::mouseButtons() & Qt::LeftButton) {
+        return;
+    }
     InstallTabBarFilters();
 
     // Başlık widget'ı hiçbir zaman değiştirilmez (değiştirmek Qt'nin ayrı pencereyi çerçevesiz kurmasına ve
@@ -413,8 +432,8 @@ void MainWindow::UpdateDockTitleBars()
         if (titleBar == nullptr) {
             continue;
         }
-        // Ana penceredeki sekme grubunda sekme zaten başlıktır; ayrı pencerede (tek başına veya
-        // birleşmiş) başlık her zaman görünür kalır ki tutulup taşınabilsin.
+        // Ana penceredeki sekme grubunda sekme zaten başlıktır; ayrı pencerede başlık her zaman
+        // görünür kalır ki tutulup taşınabilsin.
         const bool insideMainWindow = !dock->isFloating() && dock->window() == this;
         titleBar->SetCollapsed(insideMainWindow && !tabifiedDockWidgets(dock).isEmpty());
     }
@@ -423,12 +442,10 @@ void MainWindow::UpdateDockTitleBars()
 void MainWindow::InstallTabBarFilters()
 {
     // Panel sekme çubuklarını QMainWindow gerektikçe oluşturur; yeni olanlara süzgeç kurulur.
-    const QList<QTabBar *> tabBars = findChildren<QTabBar *>();
+    const QList<QTabBar *> tabBars = findChildren<QTabBar *>(Qt::FindDirectChildrenOnly);
     for (QTabBar *tabBar : tabBars) {
-        QWidget *owner = tabBar->parentWidget();
-        const bool dockTabBar = owner == this || (owner != nullptr && owner->inherits("QDockWidgetGroupWindow"));
-        if (dockTabBar && !tabBar->property("dockDoubleClickFilter").toBool()) {
-            tabBar->setProperty("dockDoubleClickFilter", true);
+        if (!tabBar->property("dockTabFilter").toBool()) {
+            tabBar->setProperty("dockTabFilter", true);
             tabBar->installEventFilter(this);
         }
     }
@@ -436,18 +453,110 @@ void MainWindow::InstallTabBarFilters()
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (event->type() == QEvent::MouseButtonDblClick) {
-        auto *tabBar = qobject_cast<QTabBar *>(watched);
+    if (auto *tabBar = qobject_cast<QTabBar *>(watched); tabBar != nullptr && tabBar->parentWidget() == this) {
+        if (HandleDockTabBarEvent(tabBar, event)) {
+            return true;
+        }
+    } else if (auto *dock = qobject_cast<QDockWidget *>(watched);
+               dock != nullptr && event->type() == QEvent::MouseButtonRelease && dock->property("tabDragGrab").toBool()) {
+        // Sekmeden başlatılan sürükleme bitti: Qt bırakmayı işledikten sonra yakalama serbest bırakılır.
+        dock->setProperty("tabDragGrab", false);
+        dock->removeEventFilter(this);
+        QTimer::singleShot(0, dock, [dock]() {
+            if (QWidget::mouseGrabber() == dock) {
+                dock->releaseMouse();
+            }
+        });
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
+bool MainWindow::HandleDockTabBarEvent(QTabBar *tabBar, QEvent *event)
+{
+    switch (event->type()) {
+    case QEvent::MouseButtonPress: {
         const auto *mouse = static_cast<QMouseEvent *>(event);
-        if (tabBar != nullptr && mouse->button() == Qt::LeftButton) {
+        const int tab = mouse->button() == Qt::LeftButton ? tabBar->tabAt(mouse->position().toPoint()) : -1;
+        m_tabDragBar = tab >= 0 ? tabBar : nullptr;
+        m_tabDragTitle = tab >= 0 ? tabBar->tabText(tab) : QString();
+        return false; // sekme seçimi Qt'de kalır
+    }
+    case QEvent::MouseMove: {
+        const auto *mouse = static_cast<QMouseEvent *>(event);
+        if (m_tabDragBar != tabBar || !(mouse->buttons() & Qt::LeftButton)) {
+            return false;
+        }
+        // Sekme çubuğundan belirgin biçimde uzaklaşınca panel ayrı pencereye çıkar ve sürükleme sürer;
+        // çubuk boyunca yatay hareket sekmede kalır.
+        const int margin = QApplication::startDragDistance() * 2;
+        if (tabBar->rect().adjusted(-margin, -margin, margin, margin).contains(mouse->position().toPoint())) {
+            return false;
+        }
+        QDockWidget *dock = DockForTitle(m_tabDragTitle);
+        m_tabDragBar = nullptr;
+        if (dock == nullptr) {
+            return false;
+        }
+        StartDockDragFromTab(tabBar, dock, mouse->globalPosition().toPoint());
+        return true;
+    }
+    case QEvent::MouseButtonRelease:
+        m_tabDragBar = nullptr;
+        return false;
+    case QEvent::MouseButtonDblClick: {
+        const auto *mouse = static_cast<QMouseEvent *>(event);
+        if (mouse->button() == Qt::LeftButton) {
             const int tab = tabBar->tabAt(mouse->position().toPoint());
             if (QDockWidget *dock = DockForTitle(tabBar->tabText(tab)); tab >= 0 && dock != nullptr) {
+                m_tabDragBar = nullptr;
                 FloatDock(dock);
                 return true;
             }
         }
+        return false;
     }
-    return QMainWindow::eventFilter(watched, event);
+    default:
+        return false;
+    }
+}
+
+void MainWindow::StartDockDragFromTab(QTabBar *tabBar, QDockWidget *dock, const QPoint &cursor)
+{
+    // Sekme çubuğunun basılı durumu sıfırlanır (fare yakalaması panele geçecek). Panel ayrılınca Qt
+    // sekme çubuğunu kaldırabileceği için bu, ayırmadan önce yapılır.
+    QMouseEvent release(QEvent::MouseButtonRelease, tabBar->mapFromGlobal(QPointF(cursor)), QPointF(cursor),
+                        Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+    QApplication::sendEvent(tabBar, &release);
+
+    const QSize dockedSize = dock->size();
+    dock->setFloating(true);
+    auto *titleBar = qobject_cast<DockTitleBar *>(dock->titleBarWidget());
+    if (titleBar != nullptr) {
+        titleBar->SetCollapsed(false);
+    }
+    QSize size(qMax(520, dockedSize.width() * 2 / 3), qMax(360, dockedSize.height() * 2 / 3));
+    if (const QScreen *screen = QGuiApplication::screenAt(cursor)) {
+        size = size.boundedTo(screen->availableGeometry().size());
+    }
+    // İmleç yeni pencerenin başlık çubuğunda, sol tarafta durur.
+    const int titleHeight = titleBar != nullptr ? titleBar->sizeHint().height() : 24;
+    const QPoint grabOffset(qMin(80, size.width() / 3), titleHeight / 2);
+    dock->resize(size);
+    dock->move(cursor - grabOffset);
+    dock->show();
+    dock->raise();
+    if (QLayout *layout = dock->layout()) {
+        layout->activate();
+    }
+
+    // Sürükleme Qt'ye devredilir: fare panele yönlendirilir ve başlıkta basılmış gibi bir olay
+    // gönderilir. Sonraki hareketlerle Qt paneli taşır, ana pencerede bölme/sekme yerini gösterir.
+    dock->setProperty("tabDragGrab", true);
+    dock->installEventFilter(this);
+    dock->grabMouse();
+    QMouseEvent press(QEvent::MouseButtonPress, dock->mapFromGlobal(QPointF(cursor)), QPointF(cursor),
+                      Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(dock, &press);
 }
 
 QDockWidget *MainWindow::DockForTitle(const QString &title) const
@@ -465,7 +574,11 @@ void MainWindow::FloatDock(QDockWidget *dock)
 {
     const QSize dockedSize = dock->size();
     dock->setFloating(true);
-    UpdateDockTitleBars(); // ayrı pencerede başlık hemen görünsün
+    // Ayrı pencerede başlık hemen görünsün (çift tıklama sırasında fare basılı olduğundan
+    // UpdateDockTitleBars() bekler; diğer başlıklar fare bırakılınca güncellenir).
+    if (auto *titleBar = qobject_cast<DockTitleBar *>(dock->titleBarWidget())) {
+        titleBar->SetCollapsed(false);
+    }
 
     QSize size(qMax(520, dockedSize.width() * 2 / 3), qMax(360, dockedSize.height() * 2 / 3));
     QPoint topLeft = QCursor::pos() - QPoint(size.width() / 2, 20);
@@ -480,6 +593,40 @@ void MainWindow::FloatDock(QDockWidget *dock)
     dock->show();
     dock->raise();
     dock->activateWindow();
+}
+
+void MainWindow::DockIntoMainWindow(QDockWidget *dock)
+{
+    if (dock == nullptr || dock->window() == this) {
+        return;
+    }
+    const bool wasHidden = dock->isHidden();
+    dock->setFloating(false); // Qt eski yerine döndürür
+    if (dock->window() != this) {
+        // Eski yeri kalmamış panel ana penceredeki bir panelin sekme grubuna eklenir.
+        QDockWidget *target = nullptr;
+        const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock};
+        for (QDockWidget *other : docks) {
+            if (other != nullptr && other != dock && other->window() == this && !other->isFloating()
+                && !other->isHidden()) {
+                target = other;
+                break;
+            }
+        }
+        if (target != nullptr) {
+            tabifyDockWidget(target, dock);
+        } else {
+            addDockWidget(Qt::LeftDockWidgetArea, dock);
+        }
+        dock->setFloating(false);
+    }
+    if (!wasHidden) {
+        dock->show();
+        dock->raise();
+    } else {
+        dock->hide(); // kapatılmış panel kapalı kalır (Görünüm menüsünden açılır)
+    }
+    UpdateDockTitleBars();
 }
 
 void MainWindow::RestoreWindowLayout()
@@ -602,6 +749,7 @@ void MainWindow::BuildMenus()
     connect(rescan, &QAction::triggered, this, &MainWindow::RefreshPorts);
     busMenu->addSeparator();
     busMenu->addAction(m_clearRxAction);
+    busMenu->addAction(m_txClearAction);
     QAction *clearTrace = busMenu->addAction(tr("Trace'i temizle"));
     connect(clearTrace, &QAction::triggered, this, &MainWindow::ClearTrace);
     QAction *resetTx = busMenu->addAction(tr("Tx sayaçlarını sıfırla"));

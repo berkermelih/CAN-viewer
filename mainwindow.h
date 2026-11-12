@@ -8,6 +8,7 @@
 #include <QElapsedTimer>
 #include <QList>
 #include <QMainWindow>
+#include <QPointer>
 #include <QTimer>
 
 #include <memory>
@@ -24,6 +25,7 @@ class QDockWidget;
 class QLabel;
 class QMenu;
 class QPushButton;
+class QTabBar;
 class QTableView;
 class RxMessageModel;
 class TraceModel;
@@ -71,8 +73,9 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
     /**
-     * @brief Panel sekmelerine çift tıklanınca paneli ayrı pencereye alır.
-     * @param watched Olayın hedefi (panel sekme çubuğu).
+     * @brief Panel sekme çubuklarının fare olaylarını işler (sekmeden sürükleyip ayırma, çift tıklayıp ayırma)
+     *        ve sekmeden başlatılan sürüklemenin sonunda fare yakalamasını bırakır.
+     * @param watched Olayın hedefi (panel sekme çubuğu veya sürüklenen panel).
      * @param event Olay.
      * @return Olay işlendiyse true.
      */
@@ -132,13 +135,37 @@ private:
     /**
      * @brief Ana penceredeki sekme grubunda olan panellerin başlığını daraltır, diğerlerinde gösterir.
      *
-     * Başlık widget'ı (DockTitleBar) değiştirilmez; yalnızca yüksekliği ayarlanır. Bu nedenle
-     * sürükleme sırasında da güvenle çağrılabilir.
+     * Başlık widget'ı (DockTitleBar) değiştirilmez; yalnızca yüksekliği ayarlanır. Sol fare düğmesi
+     * basılıyken (sürükleme sürerken) hiçbir şey yapmaz; zamanlayıcı fare bırakılınca yeniden çağırır.
      */
     void UpdateDockTitleBars();
 
-    /// Panel sekme çubuklarına çift tıklama süzgecini kurar (yeni oluşan sekme çubukları dahil).
+    /// Ana penceredeki panel sekme çubuklarına süzgeç kurar (yeni oluşan sekme çubukları dahil).
     void InstallTabBarFilters();
+
+    /**
+     * @brief Panel sekme çubuğundaki fare olaylarını işler: sekmeden sürükleyerek ayırma ve çift tıklama.
+     *
+     * GroupedDragging kapalı olduğundan Qt sekmeden sürüklemeyi sunmaz; sekme basılıyken imleç
+     * çubuktan belirgin biçimde uzaklaşınca StartDockDragFromTab() çağrılır. Çift tıklama paneli
+     * ayrı pencereye alır (FloatDock()).
+     * @param tabBar Olayın geldiği sekme çubuğu.
+     * @param event Olay.
+     * @return Olay tüketildiyse true.
+     */
+    bool HandleDockTabBarEvent(QTabBar *tabBar, QEvent *event);
+
+    /**
+     * @brief Paneli sekmesinden ayırıp ayrı pencerede sürüklemeye devam ettirir.
+     *
+     * Panel imleç başlık çubuğunda kalacak şekilde ayrı pencereye alınır, fare panele yönlendirilir ve
+     * başlığa basılmış gibi olay gönderilir; böylece taşıma ve ana pencereye (bölme / sekme) bırakma
+     * Qt'nin kendi sürüklemesiyle sürer. Yakalama, bırakma işlendikten sonra serbest bırakılır.
+     * @param tabBar Sürüklemenin başladığı sekme çubuğu (basılı durumu sıfırlanır).
+     * @param dock Ayrılacak panel.
+     * @param cursor İmlecin ekran konumu.
+     */
+    void StartDockDragFromTab(QTabBar *tabBar, QDockWidget *dock, const QPoint &cursor);
 
     /**
      * @brief Sekme metnine karşılık gelen paneli bulur.
@@ -155,6 +182,15 @@ private:
      * @param dock Ayrılacak panel.
      */
     void FloatDock(QDockWidget *dock);
+
+    /**
+     * @brief Ayrı penceredeki paneli ana pencereye yerleştirir.
+     *
+     * Panel önce eski yerine döndürülür; eski yeri kalmamışsa ana penceredeki bir panelin sekme
+     * grubuna eklenir, ana pencerede hiç panel yoksa sol alana yerleştirilir. Kapatılmış panel kapalı kalır.
+     * @param dock Yerleştirilecek panel.
+     */
+    void DockIntoMainWindow(QDockWidget *dock);
 
     /// Kayıtlı pencere boyutu ve panel düzenini geri yükler; yoksa varsayılan düzeni uygular.
     void RestoreWindowLayout();
@@ -425,6 +461,8 @@ private:
     ThemeSwitch *m_themeSwitch = nullptr;
     UpdateChecker *m_updateChecker = nullptr;
     QTimer m_dockCheckTimer;
+    QPointer<QTabBar> m_tabDragBar; ///< Sekmesine basılan panel sekme çubuğu (sekmeden sürükleme bekleniyor)
+    QString m_tabDragTitle;         ///< Basılan sekmenin (panelin) başlığı
     bool m_restartRequested = false; ///< Kapanıştan sonra uygulama yeniden başlatılacak mı (dil değişikliği)
 
     // Tablo eylemleri
