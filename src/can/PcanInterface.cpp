@@ -14,6 +14,11 @@ constexpr quint32 PcanErrorBusHeavy = 0x00008;
 constexpr quint32 PcanErrorBusOff = 0x00010;
 constexpr quint32 PcanErrorQueueReceiveEmpty = 0x00020;
 constexpr quint32 PcanErrorBusPassive = 0x40000;
+// Donanımın kaybolduğunu gösteren hatalar: sürücü yok, geçersiz handle (ILLHW/ILLNET/ILLCLIENT),
+// kanal başlatılmamış.
+constexpr quint32 PcanErrorNoDriver = 0x00200;
+constexpr quint32 PcanErrorIllegalHandle = 0x01C00;
+constexpr quint32 PcanErrorInitialize = 0x4000000;
 
 // PCAN-Basic mesaj tipi bitleri
 constexpr quint8 PcanMessageRtr = 0x01;
@@ -449,6 +454,8 @@ bool PcanInterface::LoadPcanLibrary(QString &errorText)
     m_write = reinterpret_cast<WriteFunction>(m_library.resolve("CAN_Write"));
     m_getStatus = reinterpret_cast<GetStatusFunction>(m_library.resolve("CAN_GetStatus"));
     m_getErrorText = reinterpret_cast<GetErrorTextFunction>(m_library.resolve("CAN_GetErrorText"));
+    // Kanal durumu (donanım söküldü mü) için kullanılır; yoksa yalnızca hata kodlarına bakılır.
+    m_getValue = reinterpret_cast<ChannelGetValueFunction>(m_library.resolve("CAN_GetValue"));
     // CAN FD fonksiyonları eski sürümlerde yoktur; yalnızca FD modunda gereklidir.
     m_initializeFd = reinterpret_cast<InitializeFdFunction>(m_library.resolve("CAN_InitializeFD"));
     m_readFd = reinterpret_cast<ReadFdFunction>(m_library.resolve("CAN_ReadFD"));
@@ -584,8 +591,38 @@ void PcanInterface::PollBusStatus()
         return;
     }
     const quint32 status = m_getStatus(m_channelHandle);
+    if (IsDeviceLost(status)) {
+        HandleDeviceLost(tr("%1 adaptörüne erişilemiyor; donanım sökülmüş veya sürücü bağlantısı kesilmiş olabilir.")
+                             .arg(m_channelName));
+        return;
+    }
     if (status != m_lastBusStatus) {
         m_lastBusStatus = status;
         emit BusStatusChanged(BusStatusText(status));
     }
+}
+
+bool PcanInterface::IsDeviceLost(quint32 lastStatus) const
+{
+    if ((lastStatus & (PcanErrorNoDriver | PcanErrorIllegalHandle | PcanErrorInitialize)) != 0) {
+        return true;
+    }
+    if (m_getValue == nullptr) {
+        return false;
+    }
+    quint32 condition = 0;
+    const quint32 result = m_getValue(m_channelHandle, PcanParameterChannelCondition, &condition, sizeof(condition));
+    if (result == PcanErrorOk) {
+        return (condition & (PcanChannelAvailable | PcanChannelOccupied)) == 0;
+    }
+    return (result & (PcanErrorNoDriver | PcanErrorIllegalHandle | PcanErrorInitialize)) != 0;
+}
+
+void PcanInterface::HandleDeviceLost(const QString &reason)
+{
+    if (!m_open) {
+        return;
+    }
+    Close();
+    emit ConnectionLost(reason);
 }

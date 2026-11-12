@@ -89,6 +89,15 @@ signals:
     /// EDS veya düğüm numarası değiştiğinde, yani çerçeve yorumları değiştiğinde yayılır.
     void InterpretationChanged();
 
+    /**
+     * @brief NMT / SYNC kutusundan veya SDO kutusundan (Oku, Yaz, Kaydet) bir çerçeve gönderildiğinde yayılır.
+     *
+     * Ana pencere bu çerçeveyi Mesajlar panelindeki Tx (gönderim) tablosunda gösterir.
+     * @param frame Gönderilen çerçeve.
+     * @param description Tx tablosunda açıklama olarak gösterilecek metin (ör. "NMT Start → Node 2").
+     */
+    void ManualFrameSent(const CanFrame &frame, const QString &description);
+
 private:
     /// Panel bileşenlerini oluşturur ve yerleştirir.
     void BuildUi();
@@ -131,6 +140,30 @@ private:
 
     /// SYNC çerçevesi gönderir.
     void SendSync();
+
+    /**
+     * @brief Hedef düğüme "save" imzasını (73 61 76 65) SDO expedited download ile yazar.
+     *
+     * Kaydet (Vendor): 2105h:00, Kaydet (parametre): 1010h:01. Örneğin Node 2 için
+     * COB-ID 602, veri 23 10 10 01 73 61 76 65 gönderilir; yanıt günlüğe yazılır.
+     * @param index Hedef nesne index'i.
+     * @param subIndex Hedef subindex.
+     * @param name Günlükte gösterilecek işlem adı.
+     */
+    void SendSaveCommand(quint16 index, quint8 subIndex, const QString &name);
+
+    /**
+     * @brief Elle başlatılan bir SDO aktarımının çerçevelerini Tx tablosuna bildirmeye başlar.
+     *
+     * Aktarım bitene (veya hata verene) kadar SDO istemcisinin gönderdiği her çerçeve
+     * ManualFrameSent ile yayılır; ilk çerçeve bu açıklamayı, sonrakiler "· devam" ekini alır.
+     * Parametre seti (toplu aktarım) çerçeveleri bildirilmez.
+     * @param description Tx tablosunda gösterilecek açıklama (ör. "SDO oku 0x2100:00 → Node 1").
+     */
+    void BeginSdoTxReport(const QString &description);
+
+    /// SDO çerçevelerinin Tx tablosuna bildirilmesini sonlandırır.
+    void EndSdoTxReport();
 
     /**
      * @brief SDO alanlarındaki index ve subindex'i çözer.
@@ -253,7 +286,12 @@ private:
     QLineEdit *m_valueEdit = nullptr;
     QPushButton *m_readButton = nullptr;
     QPushButton *m_writeButton = nullptr;
+    QPushButton *m_saveVendorButton = nullptr;
+    QPushButton *m_saveParameterButton = nullptr;
     QSpinBox *m_nmtTargetSpin = nullptr;
+    QLabel *m_nmtTargetHint = nullptr;
+    QString m_sdoTxDescription; ///< Boş değilse elle başlatılan SDO çerçeveleri Tx tablosuna bildirilir
+    int m_sdoTxFrameCount = 0;  ///< Bu aktarımda bildirilen çerçeve sayısı
     QList<QPushButton *> m_busButtons;
     QPlainTextEdit *m_log = nullptr;
     QHash<quint32, QStandardItem *> m_valueItems;

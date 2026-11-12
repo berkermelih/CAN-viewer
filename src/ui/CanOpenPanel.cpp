@@ -78,7 +78,13 @@ CanOpenPanel::CanOpenPanel(QWidget *parent)
             errorText = tr("Gönderim fonksiyonu ayarlanmamış.");
             return false;
         }
-        return m_send(frame, errorText);
+        const bool sent = m_send(frame, errorText);
+        // Elle başlatılan SDO aktarımlarının çerçeveleri Tx tablosunda gösterilir (parametre seti hariç).
+        if (sent && !m_sdoTxDescription.isEmpty() && !IsBatchActive()) {
+            emit ManualFrameSent(frame, m_sdoTxFrameCount++ == 0 ? m_sdoTxDescription
+                                                                 : tr("%1 · devam").arg(m_sdoTxDescription));
+        }
+        return sent;
     });
     connect(m_sdoClient, &SdoClient::UploadFinished, this, &CanOpenPanel::HandleUploadFinished);
     connect(m_sdoClient, &SdoClient::DownloadFinished, this, &CanOpenPanel::HandleDownloadFinished);
@@ -194,12 +200,23 @@ void CanOpenPanel::BuildUi()
     m_valueEdit = new QLineEdit(this);
     m_valueEdit->setFont(fixedFont);
 
-    m_readButton = new QPushButton(tr("Oku (Upload)"), this);
+    m_readButton = new QPushButton(tr("Oku (Download)"), this);
     m_readButton->setProperty("primary", true);
-    m_writeButton = new QPushButton(tr("Yaz (Download)"), this);
+    m_writeButton = new QPushButton(tr("Yaz (Upload)"), this);
+    m_writeButton->setProperty("primary", true);
     connect(m_readButton, &QPushButton::clicked, this, &CanOpenPanel::ReadSelectedObject);
     connect(m_writeButton, &QPushButton::clicked, this, &CanOpenPanel::WriteSelectedObject);
     connect(m_valueEdit, &QLineEdit::returnPressed, this, &CanOpenPanel::WriteSelectedObject);
+
+    m_saveVendorButton = new QPushButton(tr("Kaydet (Vendor)"), this);
+    m_saveVendorButton->setToolTip(tr("Hedef düğüme 2105h:00 ← \"save\" yazar (ör. Node 2: 602 · 23 05 21 00 73 61 76 65)."));
+    m_saveParameterButton = new QPushButton(tr("Kaydet (parametre)"), this);
+    m_saveParameterButton->setToolTip(
+        tr("Hedef düğüme 1010h:01 ← \"save\" yazar (ör. Node 2: 602 · 23 10 10 01 73 61 76 65)."));
+    connect(m_saveVendorButton, &QPushButton::clicked, this,
+            [this]() { SendSaveCommand(0x2105, 0x00, tr("Kaydet (Vendor)")); });
+    connect(m_saveParameterButton, &QPushButton::clicked, this,
+            [this]() { SendSaveCommand(0x1010, 0x01, tr("Kaydet (parametre)")); });
 
     auto *addressRow = new QHBoxLayout;
     addressRow->addWidget(m_indexEdit, 2);
@@ -209,6 +226,9 @@ void CanOpenPanel::BuildUi()
     auto *sdoButtons = new QHBoxLayout;
     sdoButtons->addWidget(m_readButton);
     sdoButtons->addWidget(m_writeButton);
+    auto *saveButtons = new QHBoxLayout;
+    saveButtons->addWidget(m_saveVendorButton);
+    saveButtons->addWidget(m_saveParameterButton);
 
     auto *sdoGroup = new QGroupBox(tr("SDO"), this);
     auto *sdoLayout = new QFormLayout(sdoGroup);
@@ -216,16 +236,26 @@ void CanOpenPanel::BuildUi()
     sdoLayout->addRow(tr("Veri tipi:"), m_dataTypeCombo);
     sdoLayout->addRow(tr("Değer:"), m_valueEdit);
     sdoLayout->addRow(sdoButtons);
+    sdoLayout->addRow(saveButtons);
 
+    // Özel metin ("0 (tüm düğümler)") kullanılmaz; aksi halde 0 seçiliyken üzerine rakam yazılamaz.
     m_nmtTargetSpin = new QSpinBox(this);
     m_nmtTargetSpin->setRange(0, CanOpen::MaxNodeId);
-    m_nmtTargetSpin->setSpecialValueText(tr("0 (tüm düğümler)"));
     m_nmtTargetSpin->setValue(0);
+    m_nmtTargetSpin->setToolTip(tr("0: tüm düğümler (broadcast), 1–127: tek düğüm"));
+    m_nmtTargetHint = new QLabel(this);
+    m_nmtTargetHint->setObjectName(QStringLiteral("MutedText"));
+    const auto updateTargetHint = [this](int value) {
+        m_nmtTargetHint->setText(value == 0 ? tr("tüm düğümler") : tr("Node %1").arg(value));
+    };
+    updateTargetHint(m_nmtTargetSpin->value());
+    connect(m_nmtTargetSpin, &QSpinBox::valueChanged, this, updateTargetHint);
 
     auto *nmtGroup = new QGroupBox(tr("NMT / SYNC"), this);
     auto *nmtLayout = new QGridLayout(nmtGroup);
     nmtLayout->addWidget(new QLabel(tr("Hedef:"), this), 0, 0);
-    nmtLayout->addWidget(m_nmtTargetSpin, 0, 1, 1, 2);
+    nmtLayout->addWidget(m_nmtTargetSpin, 0, 1);
+    nmtLayout->addWidget(m_nmtTargetHint, 0, 2);
 
     struct NmtButtonInfo
     {
@@ -620,7 +650,9 @@ void CanOpenPanel::ReadSelectedObject()
     }
     const quint8 nodeId = static_cast<quint8>(m_nodeIdSpin->value());
     QString errorText;
+    BeginSdoTxReport(tr("SDO oku %1 → Node %2").arg(AddressText(index, subIndex)).arg(static_cast<uint>(nodeId)));
     if (!m_sdoClient->StartUpload(nodeId, index, subIndex, errorText)) {
+        EndSdoTxReport();
         AppendLog(tr("SDO okuma başlatılamadı: %1").arg(errorText));
         return;
     }
@@ -654,7 +686,11 @@ void CanOpenPanel::WriteSelectedObject()
     }
 
     const quint8 nodeId = static_cast<quint8>(m_nodeIdSpin->value());
+    BeginSdoTxReport(tr("SDO yaz %1 = %2 → Node %3")
+                         .arg(AddressText(index, subIndex), m_valueEdit->text().trimmed())
+                         .arg(static_cast<uint>(nodeId)));
     if (!m_sdoClient->StartDownload(nodeId, index, subIndex, *data, errorText)) {
+        EndSdoTxReport();
         AppendLog(tr("SDO yazma başlatılamadı: %1").arg(errorText));
         return;
     }
@@ -670,14 +706,51 @@ void CanOpenPanel::SendNmtCommand(CanOpen::NmtCommand command)
         return;
     }
     const quint8 target = static_cast<quint8>(m_nmtTargetSpin->value());
+    const CanFrame frame = CanOpen::BuildNmtFrame(command, target);
     QString errorText;
-    if (!m_send(CanOpen::BuildNmtFrame(command, target), errorText)) {
+    if (!m_send(frame, errorText)) {
         AppendLog(tr("NMT gönderilemedi: %1").arg(errorText));
         return;
     }
-    AppendLog(tr("NMT %1 → %2")
-                  .arg(CanOpen::NmtCommandName(static_cast<quint8>(command)),
-                       target == 0 ? tr("tüm düğümler") : tr("Node %1").arg(static_cast<uint>(target))));
+    const QString description =
+        tr("NMT %1 → %2")
+            .arg(CanOpen::NmtCommandName(static_cast<quint8>(command)),
+                 target == 0 ? tr("tüm düğümler") : tr("Node %1").arg(static_cast<uint>(target)));
+    AppendLog(description);
+    emit ManualFrameSent(frame, description);
+}
+
+void CanOpenPanel::SendSaveCommand(quint16 index, quint8 subIndex, const QString &name)
+{
+    if (!m_connected || m_sdoClient->IsBusy() || IsBatchActive()) {
+        return;
+    }
+    const quint8 nodeId = static_cast<quint8>(m_nodeIdSpin->value());
+    QString errorText;
+    // "save" imzası: 73 61 76 65 (UNSIGNED32 0x65766173, little-endian) → 23 <index> <sub> 73 61 76 65
+    BeginSdoTxReport(tr("%1 → Node %2").arg(name).arg(static_cast<uint>(nodeId)));
+    if (!m_sdoClient->StartDownload(nodeId, index, subIndex, QByteArrayLiteral("save"), errorText)) {
+        EndSdoTxReport();
+        AppendLog(tr("%1 gönderilemedi: %2").arg(name, errorText));
+        return;
+    }
+    AppendLog(tr("Node %1: %2 — %3 ← \"save\" gönderildi (COB-ID %4).")
+                  .arg(static_cast<uint>(nodeId))
+                  .arg(name, AddressText(index, subIndex))
+                  .arg(QString::number(CanOpen::SdoRequestBase + nodeId, 16).toUpper()));
+    UpdateButtonStates();
+}
+
+void CanOpenPanel::BeginSdoTxReport(const QString &description)
+{
+    m_sdoTxDescription = description;
+    m_sdoTxFrameCount = 0;
+}
+
+void CanOpenPanel::EndSdoTxReport()
+{
+    m_sdoTxDescription.clear();
+    m_sdoTxFrameCount = 0;
 }
 
 void CanOpenPanel::SendSync()
@@ -685,12 +758,14 @@ void CanOpenPanel::SendSync()
     if (!m_send) {
         return;
     }
+    const CanFrame frame = CanOpen::BuildSyncFrame();
     QString errorText;
-    if (!m_send(CanOpen::BuildSyncFrame(), errorText)) {
+    if (!m_send(frame, errorText)) {
         AppendLog(tr("SYNC gönderilemedi: %1").arg(errorText));
         return;
     }
     AppendLog(QStringLiteral("SYNC"));
+    emit ManualFrameSent(frame, QStringLiteral("SYNC"));
 }
 
 bool CanOpenPanel::ReadSdoTarget(quint16 &index, quint8 &subIndex)
@@ -715,6 +790,7 @@ bool CanOpenPanel::ReadSdoTarget(quint16 &index, quint8 &subIndex)
 
 void CanOpenPanel::HandleUploadFinished(quint8 nodeId, quint16 index, quint8 subIndex, const QByteArray &data)
 {
+    EndSdoTxReport();
     if (IsBatchActive()) {
         const BatchItem &item = m_batch.at(m_batchPosition);
         const QString text = DcfWriter::FormatParameterValue(item.dataType, data);
@@ -752,6 +828,7 @@ void CanOpenPanel::HandleUploadFinished(quint8 nodeId, quint16 index, quint8 sub
 
 void CanOpenPanel::HandleDownloadFinished(quint8 nodeId, quint16 index, quint8 subIndex)
 {
+    EndSdoTxReport();
     if (IsBatchActive()) {
         AdvanceBatch(true, QString());
         return;
@@ -762,6 +839,7 @@ void CanOpenPanel::HandleDownloadFinished(quint8 nodeId, quint16 index, quint8 s
 
 void CanOpenPanel::HandleTransferFailed(quint8 nodeId, quint16 index, quint8 subIndex, const QString &reason)
 {
+    EndSdoTxReport();
     if (IsBatchActive()) {
         AdvanceBatch(false, reason);
         return;
@@ -789,6 +867,8 @@ void CanOpenPanel::UpdateButtonStates()
     const bool idle = !m_sdoClient->IsBusy() && !IsBatchActive();
     m_readButton->setEnabled(m_connected && idle);
     m_writeButton->setEnabled(m_connected && idle);
+    m_saveVendorButton->setEnabled(m_connected && idle);
+    m_saveParameterButton->setEnabled(m_connected && idle);
     m_uploadSetButton->setEnabled(m_connected && idle && !m_dictionary.IsEmpty());
     m_downloadSetButton->setEnabled(m_connected && idle);
     for (QPushButton *button : std::as_const(m_busButtons)) {

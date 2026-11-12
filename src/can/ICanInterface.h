@@ -86,6 +86,15 @@ signals:
      * @param statusText Okunabilir bus durumu.
      */
     void BusStatusChanged(const QString &statusText);
+
+    /**
+     * @brief Bağlantı beklenmedik şekilde koptuğunda yayılır (ör. USB adaptör söküldü).
+     *
+     * Sinyal yayıldığında kanal kapatılmıştır (IsOpen() false döndürür); arayüz
+     * nesnesi hâlâ geçerlidir ve sinyal yalnızca bir kez yayılır.
+     * @param reason Okunabilir neden.
+     */
+    void ConnectionLost(const QString &reason);
 };
 
 #endif // ICANINTERFACE_H

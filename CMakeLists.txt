@@ -60,6 +60,12 @@ set(PROJECT_SOURCES
         src/ui/Theme.cpp
         src/ui/ThemeSwitch.h
         src/ui/ThemeSwitch.cpp
+        src/ui/InputHelpers.h
+        src/ui/InputHelpers.cpp
+        src/ui/DockTitleBar.h
+        src/ui/DockTitleBar.cpp
+        src/ui/Localization.h
+        src/ui/Localization.cpp
         src/update/UpdateChecker.h
         src/update/UpdateChecker.cpp
         src/AppInfo.h

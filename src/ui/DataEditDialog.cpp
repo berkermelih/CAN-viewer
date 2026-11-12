@@ -1,6 +1,7 @@
 #include "DataEditDialog.h"
 
 #include "../can/CanFrame.h"
+#include "InputHelpers.h"
 #include "Theme.h"
 
 #include <QDialogButtonBox>
@@ -41,7 +42,7 @@ public:
         auto *editor = new QLineEdit(parent);
         editor->setMaxLength(2);
         editor->setAlignment(Qt::AlignCenter);
-        editor->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[0-9A-Fa-f]{0,2}")), editor));
+        editor->setValidator(new UpperCaseValidator(QRegularExpression(QStringLiteral("[0-9A-F]{0,2}")), editor));
         return editor;
     }
 

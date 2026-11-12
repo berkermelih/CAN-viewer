@@ -13,12 +13,16 @@
         <file>icons/delete.svg</file>
         <file>icons/edit.svg</file>
         <file>icons/export.svg</file>
+        <file>icons/close.svg</file>
         <file>icons/layout.svg</file>
+        <file>icons/maximize.svg</file>
         <file>icons/new.svg</file>
         <file>icons/open.svg</file>
         <file>icons/paste.svg</file>
         <file>icons/pause.svg</file>
+        <file>icons/restore.svg</file>
         <file>icons/save.svg</file>
         <file>icons/send.svg</file>
+        <file>icons/undock.svg</file>
     </qresource>
 </RCC>

@@ -1,6 +1,7 @@
 #include "TxMessageDialog.h"
 
 #include "DataEditDialog.h"
+#include "InputHelpers.h"
 #include "Theme.h"
 
 #include <QButtonGroup>
@@ -80,7 +81,7 @@ void TxMessageDialog::BuildUi()
     m_idEdit->setText(QStringLiteral("000"));
     m_idEdit->setMaxLength(8);
     m_idEdit->setFixedWidth(104);
-    m_idEdit->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[0-9A-Fa-f]{1,8}")), m_idEdit));
+    m_idEdit->setValidator(new UpperCaseValidator(QRegularExpression(QStringLiteral("[0-9A-F]{1,8}")), m_idEdit));
     connect(m_idEdit, &QLineEdit::textEdited, this, &TxMessageDialog::HandleIdEdited);
 
     m_lengthCombo = new QComboBox(this);
@@ -197,14 +198,14 @@ QWidget *TxMessageDialog::BuildByteEditors()
     grid->setHorizontalSpacing(4);
     grid->setVerticalSpacing(0);
 
-    const QRegularExpression hexPattern(QStringLiteral("[0-9A-Fa-f]{0,2}"));
+    const QRegularExpression hexPattern(QStringLiteral("[0-9A-F]{0,2}"));
     for (int i = 0; i < MaxClassicDataLength; ++i) {
         auto *edit = new QLineEdit(row);
         edit->setFont(Theme::MonospaceFont());
         edit->setMaxLength(2);
         edit->setFixedWidth(38);
         edit->setAlignment(Qt::AlignCenter);
-        edit->setValidator(new QRegularExpressionValidator(hexPattern, edit));
+        edit->setValidator(new UpperCaseValidator(hexPattern, edit));
         connect(edit, &QLineEdit::textEdited, this, [this, i](const QString &text) { HandleByteEdited(i, text); });
         connect(edit, &QLineEdit::editingFinished, this, [this, edit, i]() {
             edit->setText(QStringLiteral("%1")

@@ -69,6 +69,14 @@ protected:
      */
     void closeEvent(QCloseEvent *event) override;
 
+    /**
+     * @brief Panel sekmelerine çift tıklanınca paneli ayrı pencereye alır.
+     * @param watched Olayın hedefi (panel sekme çubuğu).
+     * @param event Olay.
+     * @return Olay işlendiyse true.
+     */
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     /// Menüler, araç çubuğu, paneller ve durum çubuğunu oluşturur.
     void BuildUi();
@@ -114,14 +122,38 @@ private:
      */
     void ConfigureTableView(QTableView *view) const;
 
-    /// Mesajlar, Trace ve CANopen panellerini tek sekme grubunda toplar (varsayılan düzen).
+    /// Mesajlar, Trace, CANopen ve Filtre panellerini tek sekme grubunda toplar (varsayılan düzen).
     void ApplyTabbedLayout();
 
-    /// Ekranı üçe böler: solda Mesajlar, sağ üstte Trace, sağ altta CANopen/EDS.
+    /// Ekranı böler: solda Mesajlar, ortada üstte Trace / altta CANopen/EDS, sağda Filtre.
     void ApplySplitLayout();
 
-    /// Sekme grubundaki panellerin başlık çubuğunu gizler (sekme zaten başlık görevi görür).
+    /**
+     * @brief Ana penceredeki sekme grubunda olan panellerin başlığını daraltır, diğerlerinde gösterir.
+     *
+     * Başlık widget'ı (DockTitleBar) değiştirilmez; yalnızca yüksekliği ayarlanır. Bu nedenle
+     * sürükleme sırasında da güvenle çağrılabilir.
+     */
     void UpdateDockTitleBars();
+
+    /// Panel sekme çubuklarına çift tıklama süzgecini kurar (yeni oluşan sekme çubukları dahil).
+    void InstallTabBarFilters();
+
+    /**
+     * @brief Sekme metnine karşılık gelen paneli bulur.
+     * @param title Sekme / panel başlığı.
+     * @return Panel; bulunamazsa nullptr.
+     */
+    QDockWidget *DockForTitle(const QString &title) const;
+
+    /**
+     * @brief Paneli imlecin bulunduğu yerde ayrı pencere olarak açar.
+     *
+     * Pencere başlığından sürüklenip ana pencereye bırakılarak veya başlığına çift
+     * tıklanarak yeniden birleştirilebilir.
+     * @param dock Ayrılacak panel.
+     */
+    void FloatDock(QDockWidget *dock);
 
     /// Kayıtlı pencere boyutu ve panel düzenini geri yükler; yoksa varsayılan düzeni uygular.
     void RestoreWindowLayout();
@@ -156,6 +188,14 @@ private:
     /// CAN arayüzünü kapatır ve periyodik gönderimleri durdurur.
     void DisconnectFromBus();
 
+    /**
+     * @brief Bağlantı beklenmedik şekilde koptuğunda (ör. adaptör söküldü) durumu günceller ve uyarı gösterir.
+     *
+     * Uygulama kapanmaz; periyodik gönderim durur, port listesi yeniden taranır.
+     * @param reason Kopma nedeni.
+     */
+    void HandleConnectionLost(const QString &reason);
+
     /// Bağlantı durumuna göre araç çubuğu, panel ve etiketleri günceller.
     void UpdateConnectionState();
 
@@ -172,6 +212,16 @@ private:
      * @return Gönderildiyse true.
      */
     bool SendFrame(const CanFrame &frame, QString &errorText);
+
+    /**
+     * @brief CANopen panelinden (NMT / SYNC) gönderilen çerçeveyi Tx tablosuna işler.
+     *
+     * Aynı çerçeve listede varsa sayacı artırılır; yoksa açıklamasıyla birlikte
+     * elle gönderim (periyot 0) satırı olarak eklenir.
+     * @param frame Gönderilen çerçeve.
+     * @param description Açıklama sütununa yazılacak metin.
+     */
+    void RecordManualTx(const CanFrame &frame, const QString &description);
 
     /**
      * @brief Tx diyaloğunu seçili adaptörün yeteneklerine göre ayarlar (CAN FD desteği).

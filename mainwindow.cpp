@@ -9,6 +9,7 @@
 #include "src/models/TxListFile.h"
 #include "src/models/TxMessageModel.h"
 #include "src/ui/CanOpenPanel.h"
+#include "src/ui/DockTitleBar.h"
 #include "src/ui/FilterPanel.h"
 #include "src/ui/Theme.h"
 #include "src/ui/ThemeSwitch.h"
@@ -29,6 +30,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -36,12 +38,15 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QPushButton>
+#include <QScreen>
 #include <QScrollArea>
 #include <QSettings>
 #include <QSplitter>
 #include <QStandardItemModel>
 #include <QStatusBar>
+#include <QTabBar>
 #include <QTableView>
 #include <QTextStream>
 #include <QToolBar>
@@ -110,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_canOpenPanel->SetSendFunction([this](const CanFrame &frame, QString &errorText) {
         return SendFrame(frame, errorText);
     });
+    connect(m_canOpenPanel, &CanOpenPanel::ManualFrameSent, this, &MainWindow::RecordManualTx);
     connect(m_canOpenPanel, &CanOpenPanel::InterpretationChanged, m_rxModel, &RxMessageModel::RefreshInterpretations);
     connect(m_canOpenPanel, &CanOpenPanel::InterpretationChanged, m_traceView->viewport(),
             [this]() { m_traceView->viewport()->update(); });
@@ -278,6 +284,8 @@ QDockWidget *MainWindow::CreateDock(const QString &title, const QString &objectN
     dock->setWidget(content);
     dock->setFeatures(QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable
                       | QDockWidget::DockWidgetClosable);
+    // Başlık çubuğu bir kez atanır ve bir daha değiştirilmez (bkz. DockTitleBar); sekmedeyken yalnızca daraltılır.
+    dock->setTitleBarWidget(new DockTitleBar(dock));
     const auto schedule = [this]() { QTimer::singleShot(0, this, &MainWindow::UpdateDockTitleBars); };
     connect(dock, &QDockWidget::topLevelChanged, this, schedule);
     connect(dock, &QDockWidget::dockLocationChanged, this, schedule);
@@ -320,7 +328,8 @@ void MainWindow::BuildDocks()
 
 void MainWindow::ApplyTabbedLayout()
 {
-    const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock};
+    // Filtre dahil tüm paneller tek bir sekme grubunda toplanır.
+    const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock};
     for (QDockWidget *dock : docks) {
         dock->setFloating(false);
         removeDockWidget(dock);
@@ -328,19 +337,17 @@ void MainWindow::ApplyTabbedLayout()
     addDockWidget(Qt::LeftDockWidgetArea, m_messagesDock);
     tabifyDockWidget(m_messagesDock, m_traceDock);
     tabifyDockWidget(m_messagesDock, m_canOpenDock);
+    tabifyDockWidget(m_messagesDock, m_filterDock);
     for (QDockWidget *dock : docks) {
         dock->show();
     }
     m_messagesDock->raise();
-    if (!m_filterDock->isHidden()) {
-        resizeDocks({m_messagesDock, m_filterDock}, {width() - 320, 320}, Qt::Horizontal);
-    }
     UpdateDockTitleBars();
 }
 
 void MainWindow::ApplySplitLayout()
 {
-    const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock};
+    const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock};
     for (QDockWidget *dock : docks) {
         dock->setFloating(false);
         removeDockWidget(dock);
@@ -348,6 +355,7 @@ void MainWindow::ApplySplitLayout()
     addDockWidget(Qt::LeftDockWidgetArea, m_messagesDock);
     splitDockWidget(m_messagesDock, m_traceDock, Qt::Horizontal);
     splitDockWidget(m_traceDock, m_canOpenDock, Qt::Vertical);
+    addDockWidget(Qt::RightDockWidgetArea, m_filterDock);
     for (QDockWidget *dock : docks) {
         dock->show();
     }
@@ -363,24 +371,83 @@ void MainWindow::ApplySplitLayout()
 
 void MainWindow::UpdateDockTitleBars()
 {
+    InstallTabBarFilters();
+
+    // Başlık widget'ı hiçbir zaman değiştirilmez (değiştirmek Qt'nin ayrı pencereyi çerçevesiz kurmasına ve
+    // sürükleme durumunun bozulmasına yol açıyordu); yalnızca sekme grubundayken daraltılır.
     const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock};
     for (QDockWidget *dock : docks) {
-        if (dock == nullptr) {
+        auto *titleBar = dock != nullptr ? qobject_cast<DockTitleBar *>(dock->titleBarWidget()) : nullptr;
+        if (titleBar == nullptr) {
             continue;
         }
-        // Sekme grubundaki panelde sekme zaten başlıktır; sekmeden sürüklenerek ayrılabilir.
-        // Ayrı pencereye alınmış (veya ayrı pencerede sekmelenmiş) panelde başlık her zaman görünür kalır;
-        // aksi halde pencereyi tutup sürükleyecek bir yer kalmaz.
+        // Ana penceredeki sekme grubunda sekme zaten başlıktır; ayrı pencerede (tek başına veya
+        // birleşmiş) başlık her zaman görünür kalır ki tutulup taşınabilsin.
         const bool insideMainWindow = !dock->isFloating() && dock->window() == this;
-        const bool tabbed = insideMainWindow && !tabifiedDockWidgets(dock).isEmpty();
-        QWidget *current = dock->titleBarWidget();
-        if (tabbed && current == nullptr) {
-            dock->setTitleBarWidget(new QWidget(dock));
-        } else if (!tabbed && current != nullptr) {
-            dock->setTitleBarWidget(nullptr);
-            current->deleteLater();
+        titleBar->SetCollapsed(insideMainWindow && !tabifiedDockWidgets(dock).isEmpty());
+    }
+}
+
+void MainWindow::InstallTabBarFilters()
+{
+    // Panel sekme çubuklarını QMainWindow gerektikçe oluşturur; yeni olanlara süzgeç kurulur.
+    const QList<QTabBar *> tabBars = findChildren<QTabBar *>();
+    for (QTabBar *tabBar : tabBars) {
+        QWidget *owner = tabBar->parentWidget();
+        const bool dockTabBar = owner == this || (owner != nullptr && owner->inherits("QDockWidgetGroupWindow"));
+        if (dockTabBar && !tabBar->property("dockDoubleClickFilter").toBool()) {
+            tabBar->setProperty("dockDoubleClickFilter", true);
+            tabBar->installEventFilter(this);
         }
     }
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonDblClick) {
+        auto *tabBar = qobject_cast<QTabBar *>(watched);
+        const auto *mouse = static_cast<QMouseEvent *>(event);
+        if (tabBar != nullptr && mouse->button() == Qt::LeftButton) {
+            const int tab = tabBar->tabAt(mouse->position().toPoint());
+            if (QDockWidget *dock = DockForTitle(tabBar->tabText(tab)); tab >= 0 && dock != nullptr) {
+                FloatDock(dock);
+                return true;
+            }
+        }
+    }
+    return QMainWindow::eventFilter(watched, event);
+}
+
+QDockWidget *MainWindow::DockForTitle(const QString &title) const
+{
+    const QList<QDockWidget *> docks = {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock};
+    for (QDockWidget *dock : docks) {
+        if (dock != nullptr && dock->windowTitle() == title) {
+            return dock;
+        }
+    }
+    return nullptr;
+}
+
+void MainWindow::FloatDock(QDockWidget *dock)
+{
+    const QSize dockedSize = dock->size();
+    dock->setFloating(true);
+    UpdateDockTitleBars(); // ayrı pencerede başlık hemen görünsün
+
+    QSize size(qMax(520, dockedSize.width() * 2 / 3), qMax(360, dockedSize.height() * 2 / 3));
+    QPoint topLeft = QCursor::pos() - QPoint(size.width() / 2, 20);
+    if (const QScreen *screen = QGuiApplication::screenAt(QCursor::pos())) {
+        const QRect available = screen->availableGeometry();
+        size = size.boundedTo(available.size());
+        topLeft.setX(qBound(available.left(), topLeft.x(), available.right() - size.width()));
+        topLeft.setY(qBound(available.top(), topLeft.y(), available.bottom() - size.height()));
+    }
+    dock->resize(size);
+    dock->move(topLeft);
+    dock->show();
+    dock->raise();
+    dock->activateWindow();
 }
 
 void MainWindow::RestoreWindowLayout()
@@ -815,6 +882,11 @@ void MainWindow::ApplyThemeColors()
     m_traceModel->SetDirectionColors(colors.success, colors.accent);
     m_canOpenPanel->ApplyThemeColors();
     RefreshActionIcons();
+    for (QDockWidget *dock : {m_messagesDock, m_traceDock, m_canOpenDock, m_filterDock}) {
+        if (auto *titleBar = dock != nullptr ? qobject_cast<DockTitleBar *>(dock->titleBarWidget()) : nullptr) {
+            titleBar->RefreshIcons();
+        }
+    }
 }
 
 void MainWindow::RefreshActionIcons()
@@ -976,6 +1048,9 @@ void MainWindow::ConnectToBus()
     connect(device.get(), &ICanInterface::BusStatusChanged, m_busStatusLabel, &QLabel::setText);
     connect(device.get(), &ICanInterface::ErrorOccurred, this,
             [this](const QString &text) { statusBar()->showMessage(text, 5000); });
+    // Kuyruklu bağlantı: uyarı penceresi arayüzün kendi zamanlayıcı yuvasının dışında açılır.
+    connect(device.get(), &ICanInterface::ConnectionLost, this, &MainWindow::HandleConnectionLost,
+            Qt::QueuedConnection);
 
     QString errorText;
     if (!device->Open(settings, errorText)) {
@@ -1004,6 +1079,20 @@ void MainWindow::DisconnectFromBus()
     m_busStatusLabel->clear();
     UpdateConnectionState();
     RefreshPorts();
+}
+
+void MainWindow::HandleConnectionLost(const QString &reason)
+{
+    // Arayüz kanalı zaten kapattı; uygulama açık kalır, yalnızca durum güncellenip kullanıcı uyarılır.
+    m_txTimer.stop();
+    m_busStatusLabel->clear();
+    UpdateConnectionState();
+    RefreshPorts();
+    statusBar()->showMessage(tr("Bağlantı koptu."), 8000);
+    QMessageBox::warning(this, tr("Bağlantı koptu"),
+                         tr("CAN bağlantısı kesildi.\n\n%1\n\nAdaptörü yeniden takıp \"Bağlan\" ile tekrar "
+                            "bağlanabilirsiniz.")
+                             .arg(reason));
 }
 
 void MainWindow::UpdateConnectionState()
@@ -1054,6 +1143,22 @@ bool MainWindow::SendFrame(const CanFrame &frame, QString &errorText)
     ++m_txTotal;
     m_traceModel->AppendFrames({frame}, TraceDirection::Tx, TraceTimeUs());
     return true;
+}
+
+void MainWindow::RecordManualTx(const CanFrame &frame, const QString &description)
+{
+    // Aynı çerçeve listede varsa sayacı artırılır; yoksa elle gönderim (periyot 0) satırı eklenir.
+    int row = m_txModel->FindMessage(frame);
+    if (row < 0) {
+        TxMessage message;
+        message.frame = frame;
+        message.frame.timestampUs = 0;
+        message.periodMs = 0;
+        message.comment = description;
+        message.nextDueMs = m_clock.elapsed();
+        row = m_txModel->AddMessage(message);
+    }
+    m_txModel->MarkSent(row);
 }
 
 void MainWindow::ConfigureTxDialog(TxMessageDialog &dialog) const

@@ -133,6 +133,7 @@ private:
     typedef quint32(PCAN_CALL *WriteFdFunction)(quint16, PcanMessageFd *);
     typedef quint32(PCAN_CALL *GetStatusFunction)(quint16);
     typedef quint32(PCAN_CALL *GetErrorTextFunction)(quint32, quint16, char *);
+    typedef quint32(PCAN_CALL *ChannelGetValueFunction)(quint16, quint8, void *, quint32);
 
     /**
      * @brief PCAN-Basic kütüphanesini yükler ve gerekli fonksiyonları çözümler.
@@ -162,8 +163,25 @@ private:
      */
     qint64 RelativeTimestamp(quint64 timeUs);
 
-    /// Bus durumunu sorgular; değiştiyse BusStatusChanged yayar.
+    /// Bus durumunu sorgular; değiştiyse BusStatusChanged yayar. Donanım sökülmüşse HandleDeviceLost çağırır.
     void PollBusStatus();
+
+    /**
+     * @brief Donanımın hâlâ bağlı olup olmadığını denetler.
+     *
+     * PCAN_CHANNEL_CONDITION sorgulanır; kanal artık "kullanılabilir / kullanımda"
+     * değilse veya sürücü geçersiz donanım / başlatılmamış kanal hatası döndürürse
+     * donanım sökülmüş kabul edilir.
+     * @param lastStatus Son PCAN-Basic çağrısının durum kodu.
+     * @return Donanım kayıpsa true.
+     */
+    bool IsDeviceLost(quint32 lastStatus) const;
+
+    /**
+     * @brief Kanalı kapatır ve ConnectionLost sinyalini (bir kez) yayar.
+     * @param reason Okunabilir neden.
+     */
+    void HandleDeviceLost(const QString &reason);
 
     QLibrary m_library;
     InitializeFunction m_initialize = nullptr;
@@ -175,6 +193,7 @@ private:
     WriteFdFunction m_writeFd = nullptr;
     GetStatusFunction m_getStatus = nullptr;
     GetErrorTextFunction m_getErrorText = nullptr;
+    ChannelGetValueFunction m_getValue = nullptr;
 
     QString m_channelName;
     quint16 m_channelHandle = 0;

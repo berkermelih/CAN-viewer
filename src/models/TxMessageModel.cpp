@@ -1,5 +1,7 @@
 #include "TxMessageModel.h"
 
+#include <algorithm>
+
 TxMessageModel::TxMessageModel(QObject *parent)
     : QAbstractTableModel(parent)
 {
@@ -183,6 +185,19 @@ void TxMessageModel::MarkSent(int row)
     }
     ++m_messages[row].count;
     emit dataChanged(index(row, ColumnCount), index(row, ColumnCount), {Qt::DisplayRole});
+}
+
+int TxMessageModel::FindMessage(const CanFrame &frame) const
+{
+    for (int row = 0; row < m_messages.size(); ++row) {
+        const CanFrame &candidate = m_messages.at(row).frame;
+        if (candidate.id == frame.id && candidate.extended == frame.extended && candidate.rtr == frame.rtr
+            && candidate.fd == frame.fd && candidate.brs == frame.brs && candidate.dlc == frame.dlc
+            && std::equal(candidate.data.begin(), candidate.data.begin() + candidate.dlc, frame.data.begin())) {
+            return row;
+        }
+    }
+    return -1;
 }
 
 QVector<int> TxMessageModel::TakeDueRows(qint64 nowMs)

@@ -116,6 +116,13 @@ public:
     void MarkSent(int row);
 
     /**
+     * @brief Aynı çerçeveyi (ID, tip, uzunluk ve veri) içeren ilk mesajı arar.
+     * @param frame Aranacak çerçeve.
+     * @return Satır numarası; bulunamazsa -1.
+     */
+    int FindMessage(const CanFrame &frame) const;
+
+    /**
      * @brief Zamanı gelmiş periyodik mesajların satırlarını döndürür ve zamanlarını ilerletir.
      * @param nowMs Monoton saat (ms).
      */
