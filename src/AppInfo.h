@@ -11,7 +11,7 @@
 namespace AppInfo {
 
 /// Uygulamanın sürümü (semantik sürümleme: ana.ara.yama).
-constexpr const char *Version = "1.0.0";
+constexpr const char *Version = "1.1.0";
 
 /// Yayınların bulunduğu GitHub deposunun sahibi.
 constexpr const char *GitHubOwner = "berkermelih";
